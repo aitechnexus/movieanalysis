@@ -10,30 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        // Check if dataset is loaded before showing dashboard
-        async function checkDatasetAndRedirect() {
-            try {
-                const response = await fetch('/api/dataset/status');
-                const data = await response.json();
-                
-                if (!data.loaded) {
-                    // No data loaded, redirect to dataset page
-                    window.location.href = 'dataset.html';
-                } else {
-                    // Data is loaded, show the dashboard
-                    document.getElementById('loadingOverlay').classList.add('hidden');
-                }
-            } catch (error) {
-                console.error('Error checking dataset status:', error);
-                // On error, redirect to dataset page
-                window.location.href = 'dataset.html';
-            }
-        }
-        
-        // Check on page load
-        document.addEventListener('DOMContentLoaded', checkDatasetAndRedirect);
-    </script>
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -142,7 +118,7 @@
                     <h3>Genre Popularity</h3>
                     <div class="chart-controls">
                         <button class="btn-small" onclick="showGenreChart('bar')" id="genreBarBtn">Bar</button>
-                        <button class="btn-small" onclick="showGenreChart('pie')" id="genrePieBtn">Pie</button>
+                        <button class="btn-small" onclick="showGenreChart('scatter')" id="genreScatterBtn">Scatter</button>
                     </div>
                 </div>
                 <canvas id="genreChart"></canvas>
@@ -158,6 +134,14 @@
                     </div>
                 </div>
                 <canvas id="timeSeriesChart"></canvas>
+            </div>
+
+            <!-- User Activity Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>User Activity Segmentation</h3>
+                </div>
+                <canvas id="userActivityChart"></canvas>
             </div>
         </div>
 
@@ -182,6 +166,22 @@
                         <span class="stat-label">Most Active User</span>
                         <span class="stat-value" id="mostActiveUser">-</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Rating Statistics -->
+            <div class="stats-card">
+                <h3>📊 Rating Statistics</h3>
+                <div id="ratingStats">
+                    <!-- Rating stats will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- User Statistics -->
+            <div class="stats-card">
+                <h3>👥 User Statistics</h3>
+                <div id="userStats">
+                    <!-- User stats will be populated by JavaScript -->
                 </div>
             </div>
 

@@ -8,6 +8,29 @@
     <link rel="stylesheet" href="dataset-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Check if dataset is loaded before showing reports page
+        async function checkDatasetStatus() {
+            try {
+                const response = await fetch('/api/dataset/status');
+                const data = await response.json();
+                
+                if (!data.loaded) {
+                    // No data loaded, redirect to dataset page
+                    alert('Please load a dataset first before viewing reports.');
+                    window.location.href = 'dataset.html';
+                }
+            } catch (error) {
+                console.error('Error checking dataset status:', error);
+                // On error, redirect to dataset page
+                alert('Unable to check dataset status. Redirecting to dataset page.');
+                window.location.href = 'dataset.html';
+            }
+        }
+        
+        // Check on page load
+        document.addEventListener('DOMContentLoaded', checkDatasetStatus);
+    </script>
     <style>
         .reports-container {
             max-width: 1400px;
@@ -327,11 +350,11 @@
             </div>
             <div class="header-right">
                 <div class="nav-buttons">
+                    <button class="nav-btn" onclick="window.location.href='dataset.html'">
+                        <i class="fas fa-arrow-left"></i> Go Back
+                    </button>
                     <button class="nav-btn" onclick="showDatasetPage()">
                         <i class="fas fa-database"></i> Dataset
-                    </button>
-                    <button class="nav-btn" onclick="showDashboard()">
-                        <i class="fas fa-chart-bar"></i> Dashboard
                     </button>
                     <button class="nav-btn" onclick="showTrends()">
                         <i class="fas fa-trending-up"></i> Trends

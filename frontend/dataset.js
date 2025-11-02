@@ -27,6 +27,13 @@ class DatasetManager {
             // Add a small delay to ensure DOM is fully loaded
             await new Promise(resolve => setTimeout(resolve, 100));
             
+            // Check if we're on the simple dataset loading page
+            const loadButton = document.querySelector('.load-button');
+            if (loadButton) {
+                console.log('Simple dataset page detected, skipping API status check');
+                return;
+            }
+            
             const response = await fetch(`${this.apiBaseUrl}/status`);
             if (response.ok) {
                 this.updateApiStatus(true);
@@ -41,6 +48,14 @@ class DatasetManager {
 
     updateApiStatus(connected) {
         console.log('updateApiStatus called with connected:', connected);
+        
+        // Check if we're on the simple dataset loading page
+        const loadButton = document.querySelector('.load-button');
+        if (loadButton) {
+            // Simple dataset page doesn't have API status indicators
+            console.log('Simple dataset page detected, skipping API status update');
+            return;
+        }
         
         // Wait for elements to be available with retry mechanism
         const waitForElement = (id, maxRetries = 10) => {
@@ -84,23 +99,51 @@ class DatasetManager {
     }
 
     setupEventListeners() {
-        // File upload drag and drop
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
-        uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        uploadArea.addEventListener('drop', this.handleDrop.bind(this));
-        
-        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-
-        // URL input enter key
-        document.getElementById('datasetUrl').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.importFromUrl();
+        console.log('setupEventListeners called');
+        try {
+            // Check if we're on the dataset loading page (simple version)
+            const loadButton = document.querySelector('.load-button');
+            console.log('loadButton found:', !!loadButton);
+            if (loadButton) {
+                // This is the simple dataset loading page, no additional event listeners needed
+                console.log('Dataset loading page detected, skipping file upload event listeners');
+                return;
             }
-        });
+
+            // File upload drag and drop (for advanced dataset management page)
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const datasetUrl = document.getElementById('datasetUrl');
+            
+            console.log('Elements found - uploadArea:', !!uploadArea, 'fileInput:', !!fileInput, 'datasetUrl:', !!datasetUrl);
+
+            if (uploadArea && fileInput) {
+                console.log('Adding event listeners to upload elements');
+                uploadArea.addEventListener('click', () => fileInput.click());
+                uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+                uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+                
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+                console.log('Upload event listeners added successfully');
+            }
+
+            // URL input enter key
+            if (datasetUrl) {
+                console.log('Adding keypress listener to datasetUrl');
+                datasetUrl.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.importFromUrl();
+                    }
+                });
+                console.log('DatasetUrl event listener added successfully');
+            }
+            
+            console.log('setupEventListeners completed successfully');
+        } catch (error) {
+            console.error('Error setting up event listeners:', error);
+            console.error('Error stack:', error.stack);
+        }
     }
 
     handleDragOver(e) {
@@ -213,11 +256,23 @@ class DatasetManager {
     }
 
     updateDatasetStatus(status) {
-        // Update status display
+        // Update status display (only if elements exist)
         const isLoaded = status.loaded || false;
-        document.getElementById('currentDataset').textContent = isLoaded ? 'MovieLens Dataset' : 'None loaded';
-        document.getElementById('datasetStatus').textContent = isLoaded ? 'Loaded' : 'Not loaded';
-        document.getElementById('lastUpdated').textContent = isLoaded ? new Date().toLocaleString() : 'Never';
+        
+        const currentDatasetEl = document.getElementById('currentDataset');
+        if (currentDatasetEl) {
+            currentDatasetEl.textContent = isLoaded ? 'MovieLens Dataset' : 'None loaded';
+        }
+        
+        const datasetStatusEl = document.getElementById('datasetStatus');
+        if (datasetStatusEl) {
+            datasetStatusEl.textContent = isLoaded ? 'Loaded' : 'Not loaded';
+        }
+        
+        const lastUpdatedEl = document.getElementById('lastUpdated');
+        if (lastUpdatedEl) {
+            lastUpdatedEl.textContent = isLoaded ? new Date().toLocaleString() : 'Never';
+        }
         
         // Enable/disable navigation buttons based on dataset status
         this.updateNavigationButtons(isLoaded);
@@ -249,22 +304,49 @@ class DatasetManager {
     }
 
     async loadSampleDataset() {
+        console.log('DatasetManager.loadSampleDataset method started!');
+        // Get selected dataset size from the form
+        const datasetSizeSelect = document.getElementById('datasetSize');
+        const datasetSize = datasetSizeSelect ? datasetSizeSelect.value : 'medium';
+        
+        console.log('Selected dataset size:', datasetSize);
+        
         this.showLoading(true, 'Loading sample dataset...');
         this.showProgress(true);
         
         try {
-            // Simulate progress updates
-            this.updateProgress(10, 'Downloading MovieLens 25M dataset...');
+            // Update progress based on dataset size
+            let progressText = 'Downloading MovieLens dataset...';
+            if (datasetSize === 'small') {
+                progressText = 'Downloading MovieLens 100K dataset...';
+            } else if (datasetSize === 'medium') {
+                progressText = 'Downloading MovieLens 1M dataset...';
+            } else if (datasetSize === 'large') {
+                progressText = 'Downloading MovieLens 25M dataset...';
+            }
             
-            const response = await fetch(`${this.apiBaseUrl}/dataset/load-sample`, {
+            this.updateProgress(10, progressText);
+            
+            const apiUrl = `${this.apiBaseUrl}/dataset/load-sample`;
+            console.log('Making API call to:', apiUrl);
+            console.log('Request body:', JSON.stringify({ size: datasetSize }));
+            
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    size: datasetSize
+                })
             });
+            
+            console.log('API response status:', response.status);
+            console.log('API response ok:', response.ok);
 
             if (response.ok) {
                 const result = await response.json();
+                console.log('API call successful, response:', result);
                 
                 // Simulate progress
                 this.updateProgress(50, 'Extracting files...');
@@ -277,8 +359,13 @@ class DatasetManager {
                 await this.delay(500);
                 
                 this.showNotification('Sample dataset loaded successfully!', 'success');
-                await this.refreshDatasetStatus();
-                this.showDatasetPreview(result.preview);
+                
+                // Redirect to dashboard after successful load
+                console.log('About to redirect to dashboard...');
+                setTimeout(() => {
+                    console.log('Executing redirect to dashboard (index.html)');
+                    window.location.href = 'index.html';
+                }, 1000);
                 
             } else {
                 const error = await response.json();
@@ -336,6 +423,13 @@ class DatasetManager {
                 this.updateFileList();
                 this.updateUploadButton();
                 
+                // Redirect to dashboard after successful upload
+                console.log('About to redirect to dashboard after upload...');
+                setTimeout(() => {
+                    console.log('Executing redirect to index.html after upload');
+                    window.location.href = 'index.html';
+                }, 1000);
+                
             } else {
                 const error = await response.json();
                 throw new Error(error.message || 'Failed to upload dataset');
@@ -389,6 +483,13 @@ class DatasetManager {
                 
                 // Clear URL input
                 document.getElementById('datasetUrl').value = '';
+                
+                // Redirect to dashboard after successful import
+                console.log('About to redirect to dashboard after import...');
+                setTimeout(() => {
+                    console.log('Executing redirect to index.html after import');
+                    window.location.href = 'index.html';
+                }, 1000);
                 
             } else {
                 const error = await response.json();
@@ -530,11 +631,14 @@ class DatasetManager {
 
     showProgress(show) {
         const progressSection = document.getElementById('progressSection');
-        progressSection.style.display = show ? 'block' : 'none';
-        
-        if (!show) {
-            this.updateProgress(0, '');
+        if (progressSection) {
+            progressSection.style.display = show ? 'block' : 'none';
+            
+            if (!show) {
+                this.updateProgress(0, '');
+            }
         }
+        // If no progress section exists (like in simple dataset.html), just skip
     }
 
     updateProgress(percentage, text, details = '') {
@@ -542,9 +646,15 @@ class DatasetManager {
         const progressText = document.getElementById('progressText');
         const progressDetails = document.getElementById('progressDetails');
         
-        progressFill.style.width = `${percentage}%`;
-        progressText.textContent = text;
-        progressDetails.textContent = details;
+        if (progressFill) progressFill.style.width = `${percentage}%`;
+        if (progressText) progressText.textContent = text;
+        if (progressDetails) progressDetails.textContent = details;
+        
+        // Also update loading text if available
+        const loadingText = document.getElementById('loadingText');
+        if (loadingText && text) {
+            loadingText.textContent = text;
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -583,6 +693,7 @@ class DatasetManager {
     }
 
     showDashboard() {
+        console.log('Navigating to dashboard...');
         window.location.href = 'index.html';
     }
 }
@@ -594,21 +705,33 @@ function refreshDatasetStatus() {
     }
 }
 
-function loadSampleDataset() {
+async function loadSampleDataset() {
+    console.log('🚀 Global loadSampleDataset function called!');
+    console.log('🔍 Checking if window.datasetManager exists:', !!window.datasetManager);
+    
     if (window.datasetManager) {
-        window.datasetManager.loadSampleDataset();
+        console.log('✅ DatasetManager found, calling loadSampleDataset method...');
+        try {
+            await window.datasetManager.loadSampleDataset();
+            console.log('✅ DatasetManager.loadSampleDataset completed successfully');
+        } catch (error) {
+            console.error('❌ Error in DatasetManager.loadSampleDataset:', error);
+        }
+    } else {
+        console.error('❌ DatasetManager not found on window object!');
+        console.log('🔍 Available on window:', Object.keys(window).filter(key => key.includes('dataset')));
     }
 }
 
-function uploadDataset() {
+async function uploadDataset() {
     if (window.datasetManager) {
-        window.datasetManager.uploadDataset();
+        await window.datasetManager.uploadDataset();
     }
 }
 
-function importFromUrl() {
+async function importFromUrl() {
     if (window.datasetManager) {
-        window.datasetManager.importFromUrl();
+        await window.datasetManager.importFromUrl();
     }
 }
 
@@ -630,6 +753,7 @@ function showDatasetPage() {
 }
 
 function showDashboard() {
+    console.log('Global showDashboard called - navigating to dashboard');
     window.location.href = 'index.html';
 }
 
@@ -652,17 +776,28 @@ function showReports() {
 
 // Initialize the dataset manager when the page loads
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOMContentLoaded event fired, creating DatasetManager...');
+    console.log('🎯 DOMContentLoaded event fired, creating DatasetManager...');
     
     // Show loading overlay immediately
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
         overlay.classList.remove('hidden');
-        console.log('Loading overlay shown');
+        console.log('📱 Loading overlay shown');
     }
     
     window.datasetManager = new DatasetManager();
-    console.log('DatasetManager created, now calling init()...');
+    console.log('🏗️ DatasetManager created, now calling init()...');
     await window.datasetManager.init();
-    console.log('DatasetManager initialization completed');
+    console.log('✅ DatasetManager initialization completed');
+    
+    // Add test for button click
+    const loadButton = document.querySelector('.load-button');
+    if (loadButton) {
+        console.log('🔘 Load button found, adding test click listener');
+        loadButton.addEventListener('click', () => {
+            console.log('🖱️ Load button clicked (via event listener)');
+        });
+    } else {
+        console.log('❌ Load button not found');
+    }
 });

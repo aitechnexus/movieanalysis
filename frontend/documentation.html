@@ -8,6 +8,29 @@
     <link rel="stylesheet" href="dataset-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Check if dataset is loaded before showing documentation page
+        async function checkDatasetStatus() {
+            try {
+                const response = await fetch('/api/dataset/status');
+                const data = await response.json();
+                
+                if (!data.loaded) {
+                    // No data loaded, redirect to dataset page
+                    alert('Please load a dataset first before viewing documentation.');
+                    window.location.href = 'dataset.html';
+                }
+            } catch (error) {
+                console.error('Error checking dataset status:', error);
+                // On error, redirect to dataset page
+                alert('Unable to check dataset status. Redirecting to dataset page.');
+                window.location.href = 'dataset.html';
+            }
+        }
+        
+        // Check on page load
+        document.addEventListener('DOMContentLoaded', checkDatasetStatus);
+    </script>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -450,8 +473,8 @@
             <div class="doc-meta">
                 <span><i class="fas fa-calendar"></i> Last Updated: December 2024</span>
                 <span><i class="fas fa-user"></i> Technical Documentation</span>
-                <a href="index.html" style="color: var(--primary-color); text-decoration: none;">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                <a href="dataset.html" style="color: var(--primary-color); text-decoration: none;">
+                    <i class="fas fa-arrow-left"></i> Go Back
                 </a>
             </div>
         </div>

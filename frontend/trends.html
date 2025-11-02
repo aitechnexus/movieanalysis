@@ -4,6 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Statistical Analysis & Trends - Movie Data Analysis Platform</title>
+    <script>
+        // Check if dataset is loaded before showing trends page
+        async function checkDatasetStatus() {
+            try {
+                const response = await fetch('/api/dataset/status');
+                const data = await response.json();
+                
+                if (!data.loaded) {
+                    // No data loaded, redirect to dataset page
+                    alert('Please load a dataset first before viewing trends.');
+                    window.location.href = 'dataset.html';
+                }
+            } catch (error) {
+                console.error('Error checking dataset status:', error);
+                // On error, redirect to dataset page
+                alert('Unable to check dataset status. Redirecting to dataset page.');
+                window.location.href = 'dataset.html';
+            }
+        }
+        
+        // Check on page load
+        document.addEventListener('DOMContentLoaded', checkDatasetStatus);
+    </script>
     <style>
         * {
             margin: 0;
@@ -353,7 +376,7 @@
         </div>
 
         <div class="nav-buttons">
-            <a href="index.html" class="nav-btn">Dashboard</a>
+            <a href="dataset.html" class="nav-btn">← Go Back</a>
             <a href="dataset.html" class="nav-btn">Dataset</a>
             <a href="trends.html" class="nav-btn active">Trends</a>
             <a href="documentation.html" class="nav-btn">Documentation</a>

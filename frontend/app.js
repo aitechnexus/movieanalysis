@@ -559,6 +559,24 @@ function toggleTimeSeriesMetric(metric) {
     console.log('Toggle time series metric:', metric);
 }
 
+// Navigation functions with data loading checks
+async function checkDatasetBeforeNavigation() {
+    try {
+        const response = await fetch('/api/dataset/status');
+        const data = await response.json();
+        
+        if (!data.loaded) {
+            alert('Please load a dataset first before accessing other pages.');
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Error checking dataset status:', error);
+        alert('Unable to check dataset status. Please ensure data is loaded.');
+        return false;
+    }
+}
+
 function showDatasetPage() {
     window.location.href = 'dataset.html';
 }
