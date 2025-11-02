@@ -70,26 +70,28 @@ class TestInsightsVisualizer:
         
         with patch('matplotlib.pyplot.savefig') as mock_savefig:
             with patch('matplotlib.pyplot.show'):
-                plot_path = visualizer.plot_rating_distribution(rating_dist)
-                
-                # Verify the plot was created
-                assert mock_savefig.called
-                
-                # Get the current figure and verify data
-                fig = plt.gcf()
-                axes = fig.get_axes()
-                
-                # Check that we have the expected number of subplots
-                assert len(axes) >= 1
-                
-                # Verify bar chart data matches input
-                bars = axes[0].patches
-                if bars:  # If bars exist, verify their heights match data
-                    expected_counts = list(rating_dist["distribution"].values())
-                    actual_heights = [bar.get_height() for bar in bars]
-                    # Allow for some floating point precision differences
-                    for expected, actual in zip(expected_counts, actual_heights):
-                        assert abs(expected - actual) < 0.1
+                with patch('matplotlib.pyplot.close'):  # Prevent closing the figure
+                    plot_path = visualizer.plot_rating_distribution(rating_dist)
+                    
+                    # Verify the plot was created
+                    assert mock_savefig.called
+                    
+                    # Get the current figure and verify data
+                    fig = plt.gcf()
+                    axes = fig.get_axes()
+                    
+                    # Check that we have the expected number of subplots
+                    assert len(axes) >= 1
+                    
+                    # Verify bar chart data matches input
+                    bars = axes[0].patches
+                    if bars:  # If bars exist, verify their heights match data
+                        expected_counts = list(rating_dist["distribution"].values())
+                        actual_heights = [bar.get_height() for bar in bars]
+                        # Allow for some floating point precision differences
+                        assert len(actual_heights) >= 1  # Ensure we have at least one bar
+                        for expected, actual in zip(expected_counts, actual_heights):
+                            assert abs(expected - actual) < 0.1
 
     def test_plot_visual_elements_validation(self, visualizer: InsightsVisualizer):
         """Test that plots contain required visual elements"""
@@ -258,7 +260,7 @@ class TestInsightsVisualizer:
         
         with patch('matplotlib.pyplot.savefig') as mock_savefig:
             with patch('matplotlib.pyplot.show'):
-                visualizer.plot_rating_distribution(rating_dist)
+                plot_path = visualizer.plot_rating_distribution(rating_dist)
                 
                 # Verify matplotlib rcParams are set (styling applied)
                 import matplotlib as mpl

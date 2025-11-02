@@ -85,7 +85,13 @@ class DataProcessor:
         df = df.drop_duplicates(subset=["movieId"])
         if len(df) < initial:
             logger.info(f"    Removed {initial - len(df)} duplicate movies")
+        
+        # Drop rows with missing movieId or null title (but keep empty strings)
         df = df.dropna(subset=["movieId", "title"])
+        
+        # Replace empty string titles with a placeholder
+        df.loc[df["title"].str.strip() == "", "title"] = "Unknown Title"
+        
         df["genres"] = df["genres"].fillna("(no genres listed)")
         df["movieId"] = df["movieId"].astype("int32", errors="ignore")
         df["title"] = df["title"].astype("string")
@@ -136,7 +142,14 @@ class DataProcessor:
         df = df.drop_duplicates()
         if len(df) < initial:
             logger.info(f"    Removed {initial - len(df)} duplicate ratings")
+        
+        # Remove rows with missing userId, but fill missing movieId with placeholder
+        df = df.dropna(subset=["userId"])
+        df.loc[df["movieId"].isna(), "movieId"] = -1  # Placeholder for missing movieId
+        
+        # Filter ratings to valid range
         df = df[(df["rating"] >= 0.5) & (df["rating"] <= 5.0)]
+        
         df["userId"] = df["userId"].astype("int32", errors="ignore")
         df["movieId"] = df["movieId"].astype("int32", errors="ignore")
         df["rating"] = df["rating"].astype("float32", errors="ignore")
@@ -230,6 +243,10 @@ class DataProcessor:
             >>> print(f"Processed {len(result['movies_clean'])} movies")
         """
         logger.info("Starting complete data processing pipeline...")
+        
+        # Validate input dataframes are not empty
+        if movies_df.empty or ratings_df.empty:
+            raise ValueError("Input dataframes cannot be empty")
         
         # Clean movies data
         logger.info("  → Processing movies data...")
@@ -331,8 +348,8 @@ class DataProcessor:
         stats.columns = ['rating_count', 'avg_rating', 'rating_std', 'min_rating', 'max_rating', 'user_count']
         stats = stats.reset_index()
         
-        # Merge with movie titles
-        stats = stats.merge(movies_df[['movieId', 'title']], on='movieId', how='left')
+        # Merge with movie titles and genres
+        stats = stats.merge(movies_df[['movieId', 'title', 'genres']], on='movieId', how='left')
         return stats
 
     def calculate_user_stats(self, ratings_df: pd.DataFrame) -> pd.DataFrame:
@@ -424,18 +441,38 @@ class DataProcessor:
             outliers = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
             
         elif method == 'zscore':
-            from scipy import stats
-            z_scores = np.abs(stats.zscore(df[column].dropna()))
-            threshold = 3
-            outlier_indices = df[column].dropna().index[z_scores > threshold]
-            outliers = df.loc[outlier_indices]
+            try:
+                from scipy import stats
+                z_scores = np.abs(stats.zscore(df[column].dropna()))
+                threshold = 3
+                outlier_indices = df[column].dropna().index[z_scores > threshold]
+                outliers = df.loc[outlier_indices]
+            except ImportError:
+                logger.warning("scipy not available, falling back to IQR method")
+                # Fall back to IQR method
+                Q1 = df[column].quantile(0.25)
+                Q3 = df[column].quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                outliers = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
             
         elif method == 'isolation':
-            from sklearn.ensemble import IsolationForest
-            iso_forest = IsolationForest(contamination=0.1, random_state=42)
-            outlier_labels = iso_forest.fit_predict(df[[column]].dropna())
-            outlier_indices = df[column].dropna().index[outlier_labels == -1]
-            outliers = df.loc[outlier_indices]
+            try:
+                from sklearn.ensemble import IsolationForest
+                iso_forest = IsolationForest(contamination=0.1, random_state=42)
+                outlier_labels = iso_forest.fit_predict(df[[column]].dropna())
+                outlier_indices = df[column].dropna().index[outlier_labels == -1]
+                outliers = df.loc[outlier_indices]
+            except ImportError:
+                logger.warning("sklearn not available, falling back to IQR method")
+                # Fall back to IQR method
+                Q1 = df[column].quantile(0.25)
+                Q3 = df[column].quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                outliers = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
             
         else:
             raise ValueError(f"Unknown method: {method}")

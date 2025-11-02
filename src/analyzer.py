@@ -72,7 +72,14 @@ class MovieAnalyzer:
             ... })
             >>> analyzer = MovieAnalyzer(movies, ratings)
         """
+        # Validate that datasets are not empty
+        if movies_df.empty or ratings_df.empty:
+            raise ValueError("Input dataframes cannot be empty")
+            
         self.movies, self.ratings, self._global_mean = movies_df, ratings_df, None
+        # Backward compatibility properties for tests
+        self.movies_df = self.movies
+        self.ratings_df = self.ratings
 
     @property
     def global_mean(self) -> float:
@@ -496,13 +503,18 @@ class MovieAnalyzer:
             user_id: Target user ID
             
         Returns:
-            Dictionary containing user preference analysis
+            Dictionary containing user preference analysis with keys:
+            - favorite_genres: User's preferred genres with ratings
+            - avg_rating: User's average rating
+            - total_ratings: Total number of ratings by user
+            - rating_distribution: Distribution of ratings (1-5 stars)
+            - activity_level: User activity classification
         """
         try:
             user_ratings = self.ratings[self.ratings['userId'] == user_id]
             
             if user_ratings.empty:
-                return {"error": "User not found"}
+                return {}
             
             # Get user's rated movies with details
             user_movies = user_ratings.merge(self.movies, on='movieId')
@@ -510,32 +522,20 @@ class MovieAnalyzer:
             # Calculate genre preferences
             genre_prefs = self._calculate_genre_preferences(user_movies)
             
-            # Calculate rating patterns
-            rating_stats = {
-                "total_ratings": len(user_ratings),
-                "average_rating": float(user_ratings['rating'].mean()),
-                "rating_std": float(user_ratings['rating'].std()),
-                "favorite_rating": float(user_ratings['rating'].mode().iloc[0]) if not user_ratings['rating'].mode().empty else 0,
-                "rating_range": {
-                    "min": float(user_ratings['rating'].min()),
-                    "max": float(user_ratings['rating'].max())
-                }
-            }
-            
-            # Get top rated movies by user
-            top_movies = user_movies.nlargest(10, 'rating')[['title', 'rating', 'genres']].to_dict('records')
+            # Calculate rating distribution
+            rating_dist = user_ratings['rating'].value_counts().sort_index().to_dict()
             
             return {
-                "user_id": user_id,
-                "rating_statistics": rating_stats,
-                "genre_preferences": genre_prefs,
-                "top_rated_movies": top_movies,
+                "favorite_genres": genre_prefs,
+                "avg_rating": float(user_ratings['rating'].mean()),
+                "total_ratings": len(user_ratings),
+                "rating_distribution": rating_dist,
                 "activity_level": self._classify_user_activity(len(user_ratings))
             }
             
         except Exception as e:
             logger.error(f"Error analyzing user preferences: {e}")
-            return {"error": str(e)}
+            return {}
 
     def _collaborative_filtering_recommendations(self, user_id: int, limit: int) -> List[Dict[str, Any]]:
         """Collaborative filtering recommendations based on user similarity."""
@@ -642,7 +642,7 @@ class MovieAnalyzer:
                     "movieId": movie['movieId'],
                     "title": movie['title'],
                     "genres": movie['genres'],
-                    "predicted_rating": movie['weighted_rating'],
+                    "score": movie['weighted_rating'],
                     "confidence": movie['rating_count']
                 })
             
@@ -820,13 +820,12 @@ class MovieAnalyzer:
         else:
             return "casual"
 
-    def get_top_rated_movies(self, n: int = 20, min_ratings: int = 100, m_percentile: float = 0.7) -> List[Dict[str, Any]]:
+    def get_top_rated_movies(self, n: int = 20, min_ratings: int = 100, m_percentile: float = 0.7) -> pd.DataFrame:
         """
-        Alias for get_top_movies method to maintain compatibility with existing tests.
+        Get top-rated movies using weighted rating algorithms, returning a DataFrame.
         
-        This method provides the same functionality as get_top_movies() but with
-        a different name for backward compatibility with test suites that expect
-        this method name.
+        This method provides the same functionality as get_top_movies() but returns
+        a DataFrame format for compatibility with test suites.
         
         Args:
             n (int): Maximum number of movies to return (default: 20)
@@ -834,14 +833,46 @@ class MovieAnalyzer:
             m_percentile (float): Percentile for minimum ratings threshold (default: 0.7)
         
         Returns:
-            List[Dict[str, Any]]: List of top-rated movies with detailed statistics
+            pd.DataFrame: DataFrame of top-rated movies with columns:
+                - movieId: Movie ID
+                - title: Movie title
+                - genres: Movie genres
+                - avg_rating: Average rating (rating_mean)
+                - rating_count: Number of ratings (vote_count)
+                - weighted_rating: IMDB-style weighted rating
         
         Examples:
             >>> analyzer = MovieAnalyzer(movies_df, ratings_df)
             >>> top_movies = analyzer.get_top_rated_movies(n=10)
-            >>> print(f"Found {len(top_movies)} top-rated movies")
+            >>> print(top_movies[['title', 'avg_rating', 'rating_count']])
         """
-        return self.get_top_movies(limit=n, min_ratings=min_ratings, m_percentile=m_percentile)
+        # Get the list format from get_top_movies
+        top_movies_list = self.get_top_movies(limit=n, min_ratings=min_ratings, m_percentile=m_percentile)
+        
+        if not top_movies_list:
+            # Return empty DataFrame with expected columns
+            return pd.DataFrame(columns=['movieId', 'title', 'genres', 'avg_rating', 'rating_count', 'weighted_rating'])
+        
+        # Convert to DataFrame and rename columns to match test expectations
+        df = pd.DataFrame(top_movies_list)
+        df = df.rename(columns={
+            'rating_mean': 'avg_rating',
+            'vote_count': 'rating_count',
+            'WR': 'weighted_rating'
+        })
+        
+        # Ensure we have the expected columns
+        expected_cols = ['movieId', 'title', 'genres', 'avg_rating', 'rating_count', 'weighted_rating']
+        for col in expected_cols:
+            if col not in df.columns:
+                if col == 'weighted_rating' and 'WR' in df.columns:
+                    df['weighted_rating'] = df['WR']
+                elif col == 'rating_count' and 'v' in df.columns:
+                    df['rating_count'] = df['v']
+                elif col == 'avg_rating' and 'R' in df.columns:
+                    df['avg_rating'] = df['R']
+        
+        return df[expected_cols] if all(col in df.columns for col in expected_cols) else df
 
     def get_statistics_summary(self) -> Dict[str, Any]:
         """
@@ -866,25 +897,51 @@ class MovieAnalyzer:
             ).nlargest(1, 'count')['title'].iloc[0] if len(self.ratings) > 0 else None
         }
 
-    def analyze_genres(self) -> Dict[str, Any]:
+    def analyze_genres(self) -> pd.DataFrame:
         """
-        Alias for analyze_genre_trends method for backward compatibility.
+        Analyze genre popularity and statistics across the dataset.
         
         Returns:
-            Dict[str, Any]: Genre analysis results
+            pd.DataFrame: Genre analysis results with columns:
+                - genre: Genre name
+                - movie_count: Number of movies in this genre
+                - avg_rating: Average rating for this genre
+                - rating_count: Total number of ratings for this genre
         """
-        return self.analyze_genre_trends()
+        logger.info("    Analyzing genres...")
+        df = self.ratings.merge(self.movies, on="movieId")
+        df["genres_list"] = df["genres"].str.split("|")
+        df = df.explode("genres_list")
+        df = df[df["genres_list"] != "(no genres listed)"]
+        
+        genre_stats = (
+            df.groupby("genres_list")
+            .agg(
+                rating_count=("rating", "count"),
+                avg_rating=("rating", "mean"),
+                movie_count=("movieId", "nunique")
+            )
+            .reset_index()
+            .rename(columns={"genres_list": "genre"})
+            .sort_values("rating_count", ascending=False)
+        )
+        
+        return genre_stats
 
-    def get_most_popular_movies(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_most_popular_movies(self, n: int = 20, limit: int = None) -> pd.DataFrame:
         """
         Get most popular movies based on rating count.
         
         Args:
-            limit (int): Maximum number of movies to return
+            n (int): Maximum number of movies to return (preferred parameter)
+            limit (int): Alternative parameter name for backward compatibility
             
         Returns:
-            List[Dict[str, Any]]: List of most popular movies
+            pd.DataFrame: DataFrame of most popular movies
         """
+        # Use n if provided, otherwise use limit for backward compatibility
+        movie_limit = n if n is not None else (limit if limit is not None else 20)
+        
         movie_popularity = self.ratings.groupby('movieId').agg({
             'rating': ['count', 'mean']
         }).round(3)
@@ -899,6 +956,187 @@ class MovieAnalyzer:
         )
         
         # Sort by rating count (popularity)
-        popular_movies = popular_movies.nlargest(limit, 'rating_count')
+        popular_movies = popular_movies.nlargest(movie_limit, 'rating_count')
         
-        return popular_movies.to_dict('records')
+        return popular_movies
+
+    def get_movies_by_genre(self, genre: str) -> pd.DataFrame:
+        """
+        Get movies filtered by a specific genre.
+        
+        Args:
+            genre (str): Genre to filter by
+            
+        Returns:
+            pd.DataFrame: Movies that contain the specified genre
+        """
+        # Filter movies that contain the specified genre
+        genre_movies = self.movies[
+            self.movies['genres'].str.contains(genre, case=False, na=False)
+        ].copy()
+        
+        return genre_movies
+
+    def analyze_temporal_patterns(self) -> Dict[str, pd.DataFrame]:
+        """
+        Analyze temporal patterns in rating behavior.
+        
+        Returns:
+            Dict[str, pd.DataFrame]: Dictionary containing temporal analysis results:
+                - hourly_patterns: Rating patterns by hour of day
+                - daily_patterns: Rating patterns by day of week  
+                - monthly_patterns: Rating patterns by month
+        """
+        logger.info("    Analyzing temporal patterns...")
+        
+        # Ensure timestamp is datetime
+        if not pd.api.types.is_datetime64_any_dtype(self.ratings['timestamp']):
+            ratings_df = self.ratings.copy()
+            ratings_df['timestamp'] = pd.to_datetime(ratings_df['timestamp'], unit='s')
+        else:
+            ratings_df = self.ratings.copy()
+        
+        # Extract time components
+        ratings_df['hour'] = ratings_df['timestamp'].dt.hour
+        ratings_df['day_of_week'] = ratings_df['timestamp'].dt.day_name()
+        ratings_df['month'] = ratings_df['timestamp'].dt.month_name()
+        
+        # Hourly patterns
+        hourly_patterns = ratings_df.groupby('hour').agg({
+            'rating': ['count', 'mean', 'std']
+        }).round(3)
+        hourly_patterns.columns = ['rating_count', 'avg_rating', 'std_rating']
+        hourly_patterns = hourly_patterns.reset_index()
+        
+        # Daily patterns
+        daily_patterns = ratings_df.groupby('day_of_week').agg({
+            'rating': ['count', 'mean', 'std']
+        }).round(3)
+        daily_patterns.columns = ['rating_count', 'avg_rating', 'std_rating']
+        daily_patterns = daily_patterns.reset_index()
+        
+        # Monthly patterns
+        monthly_patterns = ratings_df.groupby('month').agg({
+            'rating': ['count', 'mean', 'std']
+        }).round(3)
+        monthly_patterns.columns = ['rating_count', 'avg_rating', 'std_rating']
+        monthly_patterns = monthly_patterns.reset_index()
+        
+        return {
+            'hourly_patterns': hourly_patterns,
+            'daily_patterns': daily_patterns,
+            'monthly_patterns': monthly_patterns
+         }
+
+    def analyze_rating_trends(self) -> Dict[str, Any]:
+        """
+        Analyze rating trends over time.
+        
+        Returns:
+            Dict[str, Any]: Rating trends analysis including temporal patterns with keys:
+            - yearly_trends: DataFrame with yearly rating trends
+            - monthly_trends: DataFrame with monthly rating trends  
+            - daily_trends: DataFrame with daily rating trends
+        """
+        time_series = self.generate_time_series_analysis()
+        
+        # Convert the time series data to the expected format
+        yearly_data = []
+        monthly_data = []
+        daily_data = []
+        
+        if 'yearly' in time_series:
+            for item in time_series['yearly']:
+                yearly_data.append({
+                    'year': item.get('year', 0),
+                    'avg_rating': item.get('mean_rating', 0),
+                    'total_ratings': item.get('count', 0)
+                })
+        
+        if 'monthly' in time_series:
+            for item in time_series['monthly']:
+                monthly_data.append({
+                    'month': item.get('month', 0),
+                    'avg_rating': item.get('mean_rating', 0),
+                    'total_ratings': item.get('count', 0)
+                })
+        
+        if 'daily' in time_series:
+            for item in time_series['daily']:
+                daily_data.append({
+                    'day': item.get('day', 0),
+                    'avg_rating': item.get('mean_rating', 0),
+                    'total_ratings': item.get('count', 0)
+                })
+        
+        return {
+            'yearly_trends': pd.DataFrame(yearly_data),
+            'monthly_trends': pd.DataFrame(monthly_data),
+            'daily_trends': pd.DataFrame(daily_data)
+        }
+
+    def analyze_rating_patterns(self) -> Dict[str, Any]:
+        """
+        Analyze rating patterns and distributions.
+        
+        Returns:
+            Dict[str, Any]: Rating patterns analysis with keys:
+            - rating_distribution: Distribution of ratings across the dataset
+            - user_activity: User activity patterns and statistics
+            - movie_popularity: Movie popularity metrics
+        """
+        # Get rating distribution
+        rating_dist = self.get_rating_distribution()
+        
+        # Get user activity patterns
+        user_activity = self.get_user_behavior_stats()
+        
+        # Get movie popularity metrics
+        movie_stats = self.ratings.groupby('movieId').agg({
+            'rating': ['count', 'mean']
+        }).round(3)
+        movie_stats.columns = ['rating_count', 'avg_rating']
+        
+        movie_popularity = {
+            'total_movies': len(self.movies),
+            'movies_with_ratings': len(movie_stats),
+            'avg_ratings_per_movie': float(movie_stats['rating_count'].mean()),
+            'most_rated_movie_count': int(movie_stats['rating_count'].max()),
+            'least_rated_movie_count': int(movie_stats['rating_count'].min())
+        }
+        
+        return {
+            'rating_distribution': rating_dist,
+            'user_activity': user_activity,
+            'movie_popularity': movie_popularity
+        }
+
+    def get_statistics_summary(self) -> Dict[str, Any]:
+        """
+        Get comprehensive statistics summary of the dataset.
+        
+        Returns:
+            Dict[str, Any]: Statistics summary including sparsity and other metrics with keys:
+            - total_movies: Total number of movies
+            - total_users: Total number of users
+            - total_ratings: Total number of ratings
+            - avg_rating: Average rating across all ratings
+            - rating_std: Standard deviation of ratings
+            - min_rating: Minimum rating value
+            - max_rating: Maximum rating value
+            - sparsity: Dataset sparsity (1 - density)
+        """
+        total_possible_ratings = len(self.movies) * len(self.ratings['userId'].unique())
+        actual_ratings = len(self.ratings)
+        sparsity = 1 - (actual_ratings / total_possible_ratings)
+        
+        return {
+            'total_movies': len(self.movies),
+            'total_users': len(self.ratings['userId'].unique()),
+            'total_ratings': actual_ratings,
+            'avg_rating': float(self.ratings['rating'].mean()),
+            'rating_std': float(self.ratings['rating'].std()),
+            'min_rating': float(self.ratings['rating'].min()),
+            'max_rating': float(self.ratings['rating'].max()),
+            'sparsity': float(sparsity)
+        }

@@ -474,7 +474,7 @@ Heavy Users: {activity['heavy']:,}
             ratings_df[ratings_df["rating"] == r]["rating"]
             for r in sorted(ratings_df["rating"].unique())
         ]
-        axes[0, 1].boxplot(rating_groups, labels=sorted(ratings_df["rating"].unique()))
+        axes[0, 1].boxplot(rating_groups, tick_labels=sorted(ratings_df["rating"].unique()))
         axes[0, 1].set_title("Box Plot: Rating Distribution")
         axes[0, 1].set_xlabel("Rating Value")
         axes[0, 1].set_ylabel("Distribution")
