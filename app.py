@@ -39,10 +39,10 @@ VISUALIZATION_CACHE_DIR = Path("data/cache/visualizations")
 
 # Performance optimization: Global data cache to avoid reloading
 _global_data_cache = {
-    'movies_df': None,
-    'ratings_df': None,
-    'analyzer': None,
-    'last_loaded': None
+    "movies_df": None,
+    "ratings_df": None,
+    "analyzer": None,
+    "last_loaded": None,
 }
 
 # Memory optimization: Chunk size for large operations
@@ -51,6 +51,7 @@ CHUNK_SIZE = 10000
 
 def cache_visualization(cache_key):
     """Decorator to cache expensive visualization operations"""
+
     def decorator(func):
         from functools import wraps
 
@@ -67,11 +68,11 @@ def cache_visualization(cache_key):
             # Check if cached result exists and is still valid
             if cache_file.exists() and timestamp_file.exists():
                 try:
-                    with open(timestamp_file, 'r') as f:
+                    with open(timestamp_file, "r") as f:
                         cached_timestamp = float(f.read().strip())
 
                     if current_time - cached_timestamp < CACHE_DURATION:
-                        with open(cache_file, 'r') as f:
+                        with open(cache_file, "r") as f:
                             cached_result = json.load(f)
                         logger.info(f"Using cached result for {cache_key}")
                         return jsonify(cached_result)
@@ -83,18 +84,20 @@ def cache_visualization(cache_key):
             result = func(*args, **kwargs)
 
             # Cache the result if it's successful
-            if hasattr(result, 'get_json') and result.status_code == 200:
+            if hasattr(result, "get_json") and result.status_code == 200:
                 try:
                     result_data = result.get_json()
-                    with open(cache_file, 'w') as f:
+                    with open(cache_file, "w") as f:
                         json.dump(result_data, f)
-                    with open(timestamp_file, 'w') as f:
+                    with open(timestamp_file, "w") as f:
                         f.write(str(current_time))
                 except Exception as e:
                     logger.warning(f"Failed to cache result for {cache_key}: {e}")
 
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -102,10 +105,10 @@ def clear_global_cache():
     """Clear the global data cache to force fresh data loading"""
     global _global_data_cache
     _global_data_cache = {
-        'movies_df': None,
-        'ratings_df': None,
-        'analyzer': None,
-        'last_loaded': None
+        "movies_df": None,
+        "ratings_df": None,
+        "analyzer": None,
+        "last_loaded": None,
     }
     logger.info("Global data cache cleared")
 
@@ -124,9 +127,9 @@ def get_analysis_data():
 
     if CACHE_FILE.exists() and CACHE_TIMESTAMP_FILE.exists():
         try:
-            with open(CACHE_FILE, 'r') as f:
+            with open(CACHE_FILE, "r") as f:
                 cached_analysis = json.load(f)
-            with open(CACHE_TIMESTAMP_FILE, 'r') as f:
+            with open(CACHE_TIMESTAMP_FILE, "r") as f:
                 cached_timestamp = float(f.read().strip())
         except (json.JSONDecodeError, ValueError, FileNotFoundError) as e:
             logger.warning(f"Failed to load cache: {e}")
@@ -144,8 +147,10 @@ def get_analysis_data():
 
         try:
             # Performance optimization: Check if data is already loaded in memory
-            if (_global_data_cache['last_loaded'] is None or
-                    current_time - _global_data_cache['last_loaded'] > CACHE_DURATION):
+            if (
+                _global_data_cache["last_loaded"] is None
+                or current_time - _global_data_cache["last_loaded"] > CACHE_DURATION
+            ):
 
                 logger.info("Loading fresh data from disk...")
                 # Load and process data
@@ -159,34 +164,41 @@ def get_analysis_data():
                 ratings_df = processor.clean_ratings(ratings_df)
 
                 # Cache in memory for subsequent requests
-                _global_data_cache['movies_df'] = movies_df
-                _global_data_cache['ratings_df'] = ratings_df
-                _global_data_cache['last_loaded'] = current_time
+                _global_data_cache["movies_df"] = movies_df
+                _global_data_cache["ratings_df"] = ratings_df
+                _global_data_cache["last_loaded"] = current_time
 
-                logger.info(f"Data loaded: {len(movies_df)} movies, {len(ratings_df)} ratings")
+                logger.info(
+                    f"Data loaded: {len(movies_df)} movies, {len(ratings_df)} ratings"
+                )
             else:
                 logger.info("Using cached data from memory...")
-                movies_df = _global_data_cache['movies_df']
-                ratings_df = _global_data_cache['ratings_df']
+                movies_df = _global_data_cache["movies_df"]
+                ratings_df = _global_data_cache["ratings_df"]
 
             # Create or reuse analyzer
-            if _global_data_cache['analyzer'] is None:
+            if _global_data_cache["analyzer"] is None:
                 analyzer = MovieAnalyzer(movies_df, ratings_df)
-                _global_data_cache['analyzer'] = analyzer
+                _global_data_cache["analyzer"] = analyzer
             else:
-                analyzer = _global_data_cache['analyzer']
+                analyzer = _global_data_cache["analyzer"]
 
             # Get all analysis results
             logger.info("Getting top movies...")
             top_movies = analyzer.get_top_movies(limit=20, min_ratings=50)
+
             logger.info("Getting genre stats...")
             genre_stats = analyzer.analyze_genre_trends()
+
             logger.info("Getting time series...")
             time_series = analyzer.generate_time_series_analysis()
+
             logger.info("Getting rating distribution...")
             rating_dist = analyzer.get_rating_distribution()
+
             logger.info("Getting user stats...")
             user_stats = analyzer.get_user_behavior_stats()
+
             logger.info("All basic analysis completed, starting comprehensive stats...")
 
             # Generate comprehensive statistics
@@ -194,27 +206,39 @@ def get_analysis_data():
                 visualizer = InsightsVisualizer(output_dir=Path("outputs/plots"))
                 plot_path = visualizer.plot_comprehensive_statistics(analyzer)
             except Exception as e:
+                import traceback
+
+                traceback.print_exc()
                 logger.error(f"Failed to generate comprehensive statistics plot: {e}")
                 plot_path = "outputs/plots/comprehensive_statistics.png"  # fallback
 
             # Calculate detailed statistics for comprehensive analysis (optimized)
-            ratings_stats = {
-                "mean": float(ratings_df["rating"].mean()),
-                "median": float(ratings_df["rating"].median()),
-                "std": float(ratings_df["rating"].std()),
-                "min": float(ratings_df["rating"].min()),
-                "max": float(ratings_df["rating"].max()),
-                "q25": float(ratings_df["rating"].quantile(0.25)),
-                "q75": float(ratings_df["rating"].quantile(0.75)),
-                "skewness": float(ratings_df["rating"].skew()),
-                "kurtosis": float(ratings_df["rating"].kurtosis()),
-            }
+            try:
+                ratings_stats = {
+                    "mean": float(ratings_df["rating"].mean()),
+                    "median": float(ratings_df["rating"].median()),
+                    "std": float(ratings_df["rating"].std()),
+                    "min": float(ratings_df["rating"].min()),
+                    "max": float(ratings_df["rating"].max()),
+                    "q25": float(ratings_df["rating"].quantile(0.25)),
+                    "q75": float(ratings_df["rating"].quantile(0.75)),
+                    "skewness": float(ratings_df["rating"].skew()),
+                    "kurtosis": float(ratings_df["rating"].kurtosis()),
+                }
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                raise
 
             # Movie-level statistics (memory optimized with chunking for large datasets)
             logger.info("Computing movie-level statistics...")
+
             if len(ratings_df) > CHUNK_SIZE * 10:  # Only chunk for very large datasets
                 movie_stats_list = []
-                for chunk in pd.read_csv(ratings_df, chunksize=CHUNK_SIZE):
+                # Chunk the DataFrame by splitting it into smaller pieces
+                for i in range(0, len(ratings_df), CHUNK_SIZE):
+                    chunk = ratings_df.iloc[i : i + CHUNK_SIZE]
                     chunk_stats = (
                         chunk.groupby("movieId")
                         .agg(
@@ -226,28 +250,59 @@ def get_analysis_data():
                         .reset_index()
                     )
                     movie_stats_list.append(chunk_stats)
-                movie_stats = pd.concat(movie_stats_list, ignore_index=True)
-            else:
+                # Combine all chunks and aggregate by movieId again
+                combined_stats = pd.concat(movie_stats_list, ignore_index=True)
                 movie_stats = (
-                    ratings_df.groupby("movieId")
+                    combined_stats.groupby("movieId")
                     .agg(
-                        count=("rating", "count"),
-                        mean=("rating", "mean"),
-                        std=("rating", "std"),
-                        median=("rating", "median"),
+                        count=("count", "sum"),
+                        mean=(
+                            "mean",
+                            "mean",
+                        ),  # Average of means weighted by count would be better, but this is simpler
+                        std=(
+                            "std",
+                            "mean",
+                        ),  # This is approximate, proper calculation would be more complex
+                        median=("median", "mean"),  # This is also approximate
                     )
                     .reset_index()
                 )
+            else:
+                try:
+                    movie_stats = (
+                        ratings_df.groupby("movieId")
+                        .agg(
+                            count=("rating", "count"),
+                            mean=("rating", "mean"),
+                            std=("rating", "std"),
+                            median=("rating", "median"),
+                        )
+                        .reset_index()
+                    )
+                except Exception as e:
+                    import traceback
 
-            movie_stats_summary = {
-                "total_movies": len(movie_stats),
-                "avg_ratings_per_movie": float(movie_stats["count"].mean()),
-                "median_ratings_per_movie": float(movie_stats["count"].median()),
-                "movies_with_high_ratings": len(movie_stats[movie_stats["count"] >= 100]),
-                "correlation_count_mean": float(
-                    movie_stats[["count", "mean"]].corr().iloc[0, 1]
-                ),
-            }
+                    traceback.print_exc()
+                    raise
+
+            try:
+                movie_stats_summary = {
+                    "total_movies": len(movie_stats),
+                    "avg_ratings_per_movie": float(movie_stats["count"].mean()),
+                    "median_ratings_per_movie": float(movie_stats["count"].median()),
+                    "movies_with_high_ratings": len(
+                        movie_stats[movie_stats["count"] >= 100]
+                    ),
+                    "correlation_count_mean": float(
+                        movie_stats[["count", "mean"]].corr().iloc[0, 1]
+                    ),
+                }
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                raise
 
             comprehensive_stats = {
                 "status": "success",
@@ -258,8 +313,8 @@ def get_analysis_data():
             }
 
             # Cache the results
-            cached_analysis = {
-                "metadata": {
+            try:
+                metadata = {
                     "dataset": "ml-1m",
                     "source": "grouplens",
                     "n_movies": len(movies_df),
@@ -270,7 +325,15 @@ def get_analysis_data():
                         ratings_df["timestamp"].max().strftime("%Y-%m-%d"),
                     ],
                     "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                },
+                }
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                raise
+
+            cached_analysis = {
+                "metadata": metadata,
                 "top_movies": top_movies,
                 "genre_stats": genre_stats,
                 "time_series": time_series,
@@ -281,9 +344,9 @@ def get_analysis_data():
 
             # Save cache to files
             try:
-                with open(CACHE_FILE, 'w') as f:
+                with open(CACHE_FILE, "w") as f:
                     json.dump(cached_analysis, f, indent=2)
-                with open(CACHE_TIMESTAMP_FILE, 'w') as f:
+                with open(CACHE_TIMESTAMP_FILE, "w") as f:
                     f.write(str(current_time))
                 logger.info("Analysis cache refreshed and saved successfully")
             except Exception as e:
@@ -292,7 +355,7 @@ def get_analysis_data():
             cached_timestamp = current_time
 
         except Exception as e:
-            logger.error(f"Failed to refresh analysis cache: {e}")
+            logger.error(f"Failed to refresh analysis cache: {e}", exc_info=True)
             if cached_analysis is None:
                 # Return empty data if no cache exists
                 cached_analysis = {
@@ -302,9 +365,9 @@ def get_analysis_data():
 
             # Try to save error state to cache files
             try:
-                with open(CACHE_FILE, 'w') as f:
+                with open(CACHE_FILE, "w") as f:
                     json.dump(cached_analysis, f, indent=2)
-                with open(CACHE_TIMESTAMP_FILE, 'w') as f:
+                with open(CACHE_TIMESTAMP_FILE, "w") as f:
                     f.write(str(current_time))
                 logger.info("Error state saved to cache")
             except Exception as cache_error:
@@ -315,77 +378,214 @@ def get_analysis_data():
 
 @app.route("/")
 def index():
-    """Serve the main frontend page"""
+    """
+    Serve the main frontend application page.
+
+    Returns:
+        HTML: The main index.html file from the frontend directory
+
+    HTTP Status Codes:
+        200: Successfully served the frontend page
+        404: Frontend files not found
+    """
     return send_from_directory("frontend", "index.html")
 
 
 @app.route("/api/overview")
 def api_overview():
-    """Get overview/metadata information"""
-    data = get_analysis_data()
-    return jsonify({"status": "success", "data": data.get("metadata", {})})
+    """
+    Get overview and metadata information about the dataset.
+
+    Provides high-level statistics and information about the loaded
+    MovieLens dataset including total movies, ratings, users, and
+    data quality metrics.
+
+    Returns:
+        JSON: Overview data containing dataset metadata
+
+    Response Format:
+        {
+            "status": "success",
+            "data": {
+                "total_movies": int,
+                "total_ratings": int,
+                "total_users": int,
+                "date_range": {"start": str, "end": str},
+                "data_quality": {...}
+            }
+        }
+
+    HTTP Status Codes:
+        200: Successfully retrieved overview data
+        500: Internal server error during data processing
+    """
+    try:
+        data = get_analysis_data()
+        return jsonify({"status": "success", "data": data.get("metadata", {})})
+    except Exception as e:
+        logger.error(f"Error in api_overview: {str(e)}")
+        return (
+            jsonify({"status": "error", "message": "Failed to retrieve overview data"}),
+            500,
+        )
 
 
 @app.route("/api/rating-distribution")
 def api_rating_distribution():
-    """Get rating distribution data"""
-    data = get_analysis_data()
-    rating_dist = data.get("rating_distribution", {})
+    """
+    Get rating distribution data and statistics.
 
-    # Format for Chart.js
-    distribution = rating_dist.get("distribution", {})
-    chart_data = {
-        "labels": [str(rating) for rating in sorted(distribution.keys())],
-        "datasets": [
-            {
-                "label": "Number of Ratings",
-                "data": [
-                    distribution[rating] for rating in sorted(distribution.keys())
-                ],
-                "backgroundColor": "rgba(54, 162, 235, 0.8)",
-                "borderColor": "rgba(54, 162, 235, 1)",
-                "borderWidth": 1,
-            }
-        ],
-    }
+    Provides detailed information about how ratings are distributed
+    across the dataset, including frequency counts for each rating
+    value and comprehensive statistical measures.
 
-    return jsonify(
+    Returns:
+        JSON: Rating distribution data formatted for Chart.js visualization
+
+    Response Format:
         {
             "status": "success",
             "data": {
-                "chart": chart_data,
-                "statistics": rating_dist.get("statistics", {}),
-            },
+                "chart": {
+                    "labels": ["0.5", "1.0", ...],
+                    "datasets": [{
+                        "label": "Number of Ratings",
+                        "data": [count1, count2, ...],
+                        "backgroundColor": "rgba(...)",
+                        "borderColor": "rgba(...)",
+                        "borderWidth": 1
+                    }]
+                },
+                "statistics": {
+                    "mean": float,
+                    "median": float,
+                    "std": float,
+                    "min": float,
+                    "max": float,
+                    "q25": float,
+                    "q75": float
+                }
+            }
         }
-    )
+
+    HTTP Status Codes:
+        200: Successfully retrieved rating distribution data
+        500: Internal server error during data processing
+    """
+    try:
+        data = get_analysis_data()
+        rating_dist = data.get("rating_distribution", {})
+
+        # Format distribution data for Chart.js compatibility
+        # Convert rating keys to strings and sort for consistent ordering
+        distribution = rating_dist.get("distribution", {})
+        chart_data = {
+            "labels": [str(rating) for rating in sorted(distribution.keys())],
+            "datasets": [
+                {
+                    "label": "Number of Ratings",
+                    "data": [
+                        distribution[rating] for rating in sorted(distribution.keys())
+                    ],
+                    "backgroundColor": "rgba(54, 162, 235, 0.8)",  # Blue with transparency
+                    "borderColor": "rgba(54, 162, 235, 1)",  # Solid blue border
+                    "borderWidth": 1,
+                }
+            ],
+        }
+
+        return jsonify(
+            {
+                "status": "success",
+                "data": {
+                    "chart": chart_data,
+                    "statistics": rating_dist.get("statistics", {}),
+                },
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in api_rating_distribution: {str(e)}")
+        return (
+            jsonify(
+                {"status": "error", "message": "Failed to retrieve rating distribution"}
+            ),
+            500,
+        )
 
 
 @app.route("/api/top-movies")
 def api_top_movies():
-    """Get top movies data"""
-    data = get_analysis_data()
-    top_movies = data.get("top_movies", [])
+    """
+    Get top-rated movies based on weighted rating algorithm.
 
-    # Format for horizontal bar chart
-    chart_data = {
-        "labels": [
-            movie["title"][:40] + ("..." if len(movie["title"]) > 40 else "")
-            for movie in top_movies[:15]
-        ],
-        "datasets": [
-            {
-                "label": "Weighted Rating",
-                "data": [movie["weighted_rating"] for movie in top_movies[:15]],
-                "backgroundColor": "rgba(255, 99, 132, 0.8)",
-                "borderColor": "rgba(255, 99, 132, 1)",
-                "borderWidth": 1,
+    Returns the highest-rated movies using IMDb's weighted rating formula,
+    which accounts for both average rating and number of votes to provide
+    more reliable rankings than simple averages.
+
+    Returns:
+        JSON: Top movies data formatted for horizontal bar chart visualization
+
+    Response Format:
+        {
+            "status": "success",
+            "data": {
+                "chart": {
+                    "labels": ["Movie Title 1", "Movie Title 2", ...],
+                    "datasets": [{
+                        "label": "Weighted Rating",
+                        "data": [rating1, rating2, ...],
+                        "backgroundColor": "rgba(...)",
+                        "borderColor": "rgba(...)",
+                        "borderWidth": 1
+                    }]
+                },
+                "movies": [
+                    {
+                        "title": str,
+                        "weighted_rating": float,
+                        "vote_count": int,
+                        "average_rating": float,
+                        "genres": str
+                    }, ...
+                ]
             }
-        ],
-    }
+        }
 
-    return jsonify(
-        {"status": "success", "data": {"chart": chart_data, "movies": top_movies}}
-    )
+    HTTP Status Codes:
+        200: Successfully retrieved top movies data
+        500: Internal server error during data processing
+    """
+    try:
+        data = get_analysis_data()
+        top_movies = data.get("top_movies", [])
+
+        # Format data for horizontal bar chart visualization
+        # Truncate long movie titles to prevent UI overflow
+        chart_data = {
+            "labels": [
+                movie["title"][:40] + ("..." if len(movie["title"]) > 40 else "")
+                for movie in top_movies[:15]  # Limit to top 15 for readability
+            ],
+            "datasets": [
+                {
+                    "label": "Weighted Rating",
+                    "data": [movie["weighted_rating"] for movie in top_movies[:15]],
+                    "backgroundColor": "rgba(255, 99, 132, 0.8)",  # Red with transparency
+                    "borderColor": "rgba(255, 99, 132, 1)",  # Solid red border
+                    "borderWidth": 1,
+                }
+            ],
+        }
+
+        return jsonify(
+            {"status": "success", "data": {"chart": chart_data, "movies": top_movies}}
+        )
+    except Exception as e:
+        logger.error(f"Error in api_top_movies: {str(e)}")
+        return (
+            jsonify({"status": "error", "message": "Failed to retrieve top movies"}),
+            500,
+        )
 
 
 @app.route("/api/genre-popularity")
@@ -577,10 +777,6 @@ def api_advanced_heatmaps():
         # Calculate heatmap-related statistics
         ratings_df["hour"] = ratings_df["timestamp"].dt.hour
         ratings_df["day_of_week"] = ratings_df["timestamp"].dt.day_name()
-
-        # Peak activity analysis
-        hourly_activity = ratings_df.groupby("hour").size()
-        daily_activity = ratings_df.groupby("day_of_week").size()
 
         peak_hour = int(hourly_activity.idxmax())
         peak_day = daily_activity.idxmax()
@@ -798,11 +994,13 @@ def api_refresh():
     # Trigger refresh
     get_analysis_data()
 
-    return jsonify({
-        "status": "success",
-        "message": "Analysis data and all caches refreshed",
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "message": "Analysis data and all caches refreshed",
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
 
 @app.route("/api/status")
@@ -855,16 +1053,22 @@ def get_dataset_status():
 def load_sample_dataset():
     """Load the sample MovieLens dataset"""
     try:
+        logger.info("Starting sample dataset loading...")
+
         # Force refresh of analysis cache to reload data
         global cached_analysis, cached_timestamp
         cached_analysis = None
         cached_timestamp = None
+        logger.info("Cleared analysis cache")
 
         # Trigger data loading
+        logger.info("Calling get_analysis_data()...")
         data = get_analysis_data()
+        logger.info(f"get_analysis_data() returned: {type(data)}")
 
         if "error" not in data:
             metadata = data.get("metadata", {})
+            logger.info(f"Sample dataset loaded successfully. Metadata: {metadata}")
             return jsonify(
                 {
                     "success": True,
@@ -875,13 +1079,14 @@ def load_sample_dataset():
                 }
             )
         else:
+            error_msg = data.get("error", "Unknown error")
+            logger.error(f"Error in data loading: {error_msg}")
             return (
-                jsonify(
-                    {"success": False, "error": data.get("error", "Unknown error")}
-                ),
+                jsonify({"success": False, "error": error_msg}),
                 500,
             )
     except Exception as e:
+        logger.error(f"Exception in load_sample_dataset: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1136,6 +1341,38 @@ def get_dataset_preview():
         return jsonify(stats)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/dataset/analyze", methods=["POST"])
+def analyze_dataset():
+    """Analyze the current dataset and generate insights"""
+    try:
+        data = get_analysis_data()
+
+        if "error" in data:
+            return jsonify({"success": False, "error": "No dataset loaded"}), 404
+
+        # The analysis is already performed in get_analysis_data()
+        # Return success with basic statistics
+        metadata = data.get("metadata", {})
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Dataset analyzed successfully",
+                "analysis": {
+                    "movies_count": metadata.get("n_movies", 0),
+                    "ratings_count": metadata.get("n_ratings", 0),
+                    "users_count": metadata.get("n_users", 0),
+                    "date_range": metadata.get("date_range", []),
+                    "avg_rating": metadata.get("avg_rating", 0),
+                    "genres_count": len(metadata.get("genres", [])),
+                    "insights_generated": True,
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/frontend/<path:filename>")

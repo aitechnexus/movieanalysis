@@ -10,197 +10,208 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Check if dataset is loaded before showing dashboard
+        async function checkDatasetAndRedirect() {
+            try {
+                const response = await fetch('/api/dataset/status');
+                const data = await response.json();
+                
+                if (!data.loaded) {
+                    // No data loaded, redirect to dataset page
+                    window.location.href = 'dataset.html';
+                } else {
+                    // Data is loaded, show the dashboard
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking dataset status:', error);
+                // On error, redirect to dataset page
+                window.location.href = 'dataset.html';
+            }
+        }
+        
+        // Check on page load
+        document.addEventListener('DOMContentLoaded', checkDatasetAndRedirect);
+    </script>
 </head>
 <body>
-    <div class="app">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="header-left">
-                    <h1 class="app-title">
-                        <i class="fas fa-film"></i>
-                        MovieLens Analysis
-                    </h1>
-                    <span class="subtitle">Interactive Data Dashboard</span>
-                </div>
-                <div class="header-right">
-                    <div class="nav-buttons">
-                        <button class="nav-btn" onclick="showDatasetPage()">
-                            <i class="fas fa-database"></i> Dataset
-                        </button>
-                        <button class="nav-btn active" onclick="showDashboard()">
-                            <i class="fas fa-chart-bar"></i> Dashboard
-                        </button>
-                        <button class="nav-btn" onclick="showTrends()">
-                            <i class="fas fa-chart-line"></i> Trends
-                        </button>
-                        <button class="nav-btn" onclick="showDocumentation()">
-                            <i class="fas fa-book"></i> Documentation
-                        </button>
-                        <button class="nav-btn" onclick="showReports()">
-                            <i class="fas fa-file-alt"></i> Reports
-                        </button>
-                    </div>
-                    <button class="refresh-btn" onclick="refreshData()">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh Data
-                    </button>
-                    <div class="api-status">
-                        <div class="status-indicator" id="apiStatus"></div>
-                        <span id="apiStatusText">Connecting...</span>
-                    </div>
-                    <div class="last-updated">
-                        Last updated: <span id="lastUpdated">Never</span>
-                    </div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Checking dataset status...</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-container">
+        <div class="nav-buttons">
+            <button class="nav-btn active" onclick="showDashboard()">Dashboard</button>
+            <button class="nav-btn" onclick="showDatasetPage()">Dataset</button>
+            <button class="nav-btn" onclick="showTrends()">Trends</button>
+            <button class="nav-btn" onclick="showDocumentation()">Documentation</button>
+            <button class="nav-btn" onclick="showReports()">Reports</button>
+        </div>
+        
+        <div class="status-indicator">
+            <div class="status-dot connected" id="apiStatus"></div>
+            <span id="apiStatusText">Connected</span>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Content -->
+    <div class="container">
+        <div class="header">
+            <h1>🎬 MovieLens Analysis Dashboard</h1>
+            <p>Comprehensive insights and analytics for your movie rating data</p>
+        </div>
+
+        <!-- Overview Cards -->
+        <div class="overview-grid">
+            <div class="overview-card">
+                <div class="card-icon">🎭</div>
+                <div class="card-content">
+                    <h3>Total Movies</h3>
+                    <div class="card-value" id="totalMovies">-</div>
+                    <div class="card-change">+0% from last update</div>
                 </div>
             </div>
-        </header>
-
-        <!-- Loading Overlay -->
-        <div class="loading-overlay" id="loadingOverlay">
-            <div class="loading-spinner">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Loading analysis data...</p>
+            
+            <div class="overview-card">
+                <div class="card-icon">⭐</div>
+                <div class="card-content">
+                    <h3>Total Ratings</h3>
+                    <div class="card-value" id="totalRatings">-</div>
+                    <div class="card-change">+0% from last update</div>
+                </div>
+            </div>
+            
+            <div class="overview-card">
+                <div class="card-icon">👥</div>
+                <div class="card-content">
+                    <h3>Active Users</h3>
+                    <div class="card-value" id="totalUsers">-</div>
+                    <div class="card-change">+0% from last update</div>
+                </div>
+            </div>
+            
+            <div class="overview-card">
+                <div class="card-icon">📊</div>
+                <div class="card-content">
+                    <h3>Avg Rating</h3>
+                    <div class="card-value" id="avgRating">-</div>
+                    <div class="card-change">+0% from last update</div>
+                </div>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Overview Cards -->
-            <section class="overview-section">
-                <div class="overview-cards">
-                    <div class="overview-card">
-                        <div class="card-icon">
-                            <i class="fas fa-film"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3 id="totalMovies">-</h3>
-                            <p>Total Movies</p>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-icon">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3 id="totalRatings">-</h3>
-                            <p>Total Ratings</p>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3 id="totalUsers">-</h3>
-                            <p>Total Users</p>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-icon">
-                            <i class="fas fa-calendar"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3 id="dateRange">-</h3>
-                            <p>Date Range</p>
-                        </div>
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <!-- Rating Distribution Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Rating Distribution</h3>
+                    <div class="chart-controls">
+                        <button class="btn-small" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
                     </div>
                 </div>
-            </section>
-
-            <!-- Charts Grid -->
-            <section class="charts-section">
-                <div class="charts-grid">
-                    <!-- Rating Distribution -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Rating Distribution</h3>
-                            <div class="chart-controls">
-                                <button class="chart-btn" onclick="toggleChartType('ratingChart')">
-                                    <i class="fas fa-chart-bar"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="ratingChart"></canvas>
-                        </div>
-                        <div class="chart-stats" id="ratingStats"></div>
-                    </div>
-
-                    <!-- Top Movies -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Top Movies by Weighted Rating</h3>
-                            <div class="chart-controls">
-                                <select id="topMoviesLimit" onchange="updateTopMoviesLimit()">
-                                    <option value="10">Top 10</option>
-                                    <option value="15" selected>Top 15</option>
-                                    <option value="20">Top 20</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="topMoviesChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Genre Popularity -->
-                    <div class="chart-card chart-card-wide">
-                        <div class="chart-header">
-                            <h3>Genre Popularity</h3>
-                            <div class="chart-controls">
-                                <button class="chart-btn active" onclick="showGenreChart('bar')" id="genreBarBtn">
-                                    <i class="fas fa-chart-bar"></i>
-                                </button>
-                                <button class="chart-btn" onclick="showGenreChart('scatter')" id="genreScatterBtn">
-                                    <i class="fas fa-chart-line"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="genreChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Time Series -->
-                    <div class="chart-card chart-card-wide">
-                        <div class="chart-header">
-                            <h3>Rating Trends Over Time</h3>
-                            <div class="chart-controls">
-                                <button class="chart-btn active" onclick="toggleTimeSeriesMetric('count')" id="countBtn">
-                                    Count
-                                </button>
-                                <button class="chart-btn" onclick="toggleTimeSeriesMetric('rating')" id="ratingBtn">
-                                    Rating
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="timeSeriesChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- User Activity -->
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>User Activity Distribution</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="userActivityChart"></canvas>
-                        </div>
-                        <div class="chart-stats" id="userStats"></div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <p>&copy; 2024 MovieLens Analysis Dashboard</p>
-                <p>Last updated: <span id="lastUpdated">-</span></p>
+                <canvas id="ratingChart"></canvas>
             </div>
-        </footer>
+
+            <!-- Top Movies Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Top Rated Movies</h3>
+                    <div class="chart-controls">
+                        <select id="topMoviesLimit" onchange="updateTopMoviesLimit()">
+                            <option value="10">Top 10</option>
+                            <option value="20">Top 20</option>
+                            <option value="50">Top 50</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="topMoviesChart"></canvas>
+            </div>
+
+            <!-- Genre Popularity Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Genre Popularity</h3>
+                    <div class="chart-controls">
+                        <button class="btn-small" onclick="showGenreChart('bar')" id="genreBarBtn">Bar</button>
+                        <button class="btn-small" onclick="showGenreChart('pie')" id="genrePieBtn">Pie</button>
+                    </div>
+                </div>
+                <canvas id="genreChart"></canvas>
+            </div>
+
+            <!-- Time Series Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Rating Trends Over Time</h3>
+                    <div class="chart-controls">
+                        <button class="btn-small" onclick="toggleTimeSeriesMetric('count')">Count</button>
+                        <button class="btn-small" onclick="toggleTimeSeriesMetric('average')">Average</button>
+                    </div>
+                </div>
+                <canvas id="timeSeriesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="stats-section">
+            <div class="stats-card">
+                <h3>📈 Rating Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Highest Rating</span>
+                        <span class="stat-value" id="maxRating">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Lowest Rating</span>
+                        <span class="stat-value" id="minRating">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Standard Deviation</span>
+                        <span class="stat-value" id="stdRating">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Most Active User</span>
+                        <span class="stat-value" id="mostActiveUser">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <h3>🎬 Movie Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Most Rated Movie</span>
+                        <span class="stat-value" id="mostRatedMovie">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Highest Rated Movie</span>
+                        <span class="stat-value" id="highestRatedMovie">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Popular Genre</span>
+                        <span class="stat-value" id="popularGenre">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Date Range</span>
+                        <span class="stat-value" id="dateRange">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Updated -->
+        <div class="footer">
+            <p>Last updated: <span id="lastUpdated">Never</span></p>
+        </div>
     </div>
 
     <script src="app.js"></script>

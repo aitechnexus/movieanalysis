@@ -3,207 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MovieLens Dataset Manager</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="dataset-styles.css">
+    <title>Movie Data Analysis Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .main-container {
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .header {
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .load-dataset-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            margin-bottom: 30px;
+        }
+
+        .card-header h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .card-header p {
+            color: #7f8c8d;
+            font-size: 1em;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            color: #2c3e50;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            color: #2c3e50;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .tip-box {
+            background: #f8f9ff;
+            border: 1px solid #e1e8ff;
+            border-radius: 10px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .tip-box p {
+            color: #5a67d8;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .tip-box strong {
+            color: #4c51bf;
+        }
+
+        .load-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .load-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .load-button:active {
+            transform: translateY(0);
+        }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            font-weight: 300;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            color: white;
+        }
+
+        .loading-spinner i {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .loading-spinner p {
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .main-container {
+                width: 95%;
+            }
+            
+            .load-dataset-card {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navigation Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="header-left">
-                <h1><i class="fas fa-database"></i> MovieLens Dataset Manager</h1>
-            </div>
-            <div class="header-right">
-                <div class="nav-buttons">
-                <button class="nav-btn" onclick="showDashboard()">
-                    <i class="fas fa-chart-bar"></i> Dashboard
-                </button>
-                <button class="nav-btn active" onclick="showDataset()">
-                    <i class="fas fa-database"></i> Dataset
-                </button>
-                <button class="nav-btn" onclick="showTrends()">
-                    <i class="fas fa-chart-line"></i> Trends
-                </button>
-                <button class="nav-btn" onclick="showDocumentation()">
-                    <i class="fas fa-book"></i> Documentation
-                </button>
-                <button class="nav-btn" onclick="showReports()">
-                    <i class="fas fa-file-alt"></i> Reports
-                </button>
-            </div>
-            <div class="api-status">
-                <div class="status-indicator" id="apiStatus"></div>
-                <span id="apiStatusText">Connecting...</span>
-            </div>
-            </div>
-        </div>
-    </header>
-
     <!-- Loading Overlay -->
     <div class="loading-overlay hidden" id="loadingOverlay">
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
-            <p id="loadingText">Loading...</p>
+            <p id="loadingText">Loading dataset...</p>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Dataset Status Section -->
-        <section class="dataset-status-section">
-            <div class="status-card">
-                <div class="status-header">
-                    <h2><i class="fas fa-info-circle"></i> Dataset Status</h2>
-                    <button class="refresh-btn" onclick="refreshDatasetStatus()">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
-                <div class="status-content" id="datasetStatusContent">
-                    <div class="status-item">
-                        <span class="status-label">Current Dataset:</span>
-                        <span class="status-value" id="currentDataset">None loaded</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Status:</span>
-                        <span class="status-value" id="datasetStatus">Not loaded</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Last Updated:</span>
-                        <span class="status-value" id="lastUpdated">Never</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Dataset Loading Options -->
-        <section class="dataset-options-section">
-            <div class="options-grid">
-                <!-- Sample Dataset Option -->
-                <div class="option-card">
-                    <div class="option-header">
-                        <h3><i class="fas fa-download"></i> Load Sample Dataset</h3>
-                        <p>Use the MovieLens 25M dataset for demonstration</p>
-                    </div>
-                    <div class="option-content">
-                        <div class="sample-info">
-                            <div class="info-item">
-                                <i class="fas fa-film"></i>
-                                <span>62,000+ Movies</span>
-                            </div>
-                            <div class="info-item">
-                                <i class="fas fa-star"></i>
-                                <span>25M+ Ratings</span>
-                            </div>
-                            <div class="info-item">
-                                <i class="fas fa-users"></i>
-                                <span>162,000+ Users</span>
-                            </div>
-                        </div>
-                        <button class="load-btn primary" onclick="loadSampleDataset()">
-                            <i class="fas fa-download"></i> Load Sample Dataset
-                        </button>
-                    </div>
-                </div>
-
-                <!-- File Upload Option -->
-                <div class="option-card">
-                    <div class="option-header">
-                        <h3><i class="fas fa-upload"></i> Upload Custom Dataset</h3>
-                        <p>Upload your own MovieLens-format dataset files</p>
-                    </div>
-                    <div class="option-content">
-                        <div class="upload-area" id="uploadArea">
-                            <div class="upload-content">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Drag and drop files here or click to browse</p>
-                                <p class="upload-hint">Supported: CSV, TSV files (ratings.csv, movies.csv, etc.)</p>
-                            </div>
-                            <input type="file" id="fileInput" multiple accept=".csv,.tsv,.txt" style="display: none;">
-                        </div>
-                        <div class="file-list" id="fileList"></div>
-                        <button class="load-btn secondary" onclick="uploadDataset()" id="uploadBtn" disabled>
-                            <i class="fas fa-upload"></i> Upload Dataset
-                        </button>
-                    </div>
-                </div>
-
-                <!-- URL Import Option -->
-                <div class="option-card">
-                    <div class="option-header">
-                        <h3><i class="fas fa-link"></i> Import from URL</h3>
-                        <p>Load dataset directly from a URL</p>
-                    </div>
-                    <div class="option-content">
-                        <div class="url-input-group">
-                            <input type="url" id="datasetUrl" placeholder="https://example.com/dataset.zip" class="url-input">
-                            <button class="load-btn secondary" onclick="importFromUrl()">
-                                <i class="fas fa-link"></i> Import
-                            </button>
-                        </div>
-                        <div class="url-examples">
-                            <p>Example URLs:</p>
-                            <ul>
-                                <li>MovieLens 1M: <code>https://files.grouplens.org/datasets/movielens/ml-1m.zip</code></li>
-                                <li>MovieLens 25M: <code>https://files.grouplens.org/datasets/movielens/ml-25m.zip</code></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Dataset Preview Section -->
-        <section class="dataset-preview-section" id="datasetPreviewSection" style="display: none;">
-            <div class="preview-card">
-                <div class="preview-header">
-                    <h2><i class="fas fa-eye"></i> Dataset Preview</h2>
-                    <div class="preview-actions">
-                        <button class="action-btn" onclick="analyzeDataset()">
-                            <i class="fas fa-chart-line"></i> Analyze Dataset
-                        </button>
-                        <button class="action-btn danger" onclick="clearDataset()">
-                            <i class="fas fa-trash"></i> Clear Dataset
-                        </button>
-                    </div>
-                </div>
-                <div class="preview-content">
-                    <div class="preview-stats" id="previewStats">
-                        <!-- Dataset statistics will be populated here -->
-                    </div>
-                    <div class="preview-tables" id="previewTables">
-                        <!-- Sample data tables will be populated here -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Progress Section -->
-        <section class="progress-section" id="progressSection" style="display: none;">
-            <div class="progress-card">
-                <div class="progress-header">
-                    <h3><i class="fas fa-cog fa-spin"></i> Processing Dataset</h3>
-                </div>
-                <div class="progress-content">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="progress-text" id="progressText">Initializing...</div>
-                    <div class="progress-details" id="progressDetails"></div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2024 MovieLens Analysis Dashboard. Powered by Flask & Chart.js</p>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎬 Movie Data Analysis Platform</h1>
+            <p>Statistical Insights & Visualizations</p>
         </div>
-    </footer>
 
-    <!-- Scripts -->
+        <!-- Load Dataset Card -->
+        <div class="load-dataset-card">
+            <div class="card-header">
+                <h2>📊 Load Dataset</h2>
+                <p>Choose a data source and dataset to begin analysis</p>
+            </div>
+
+            <div class="form-group">
+                <label for="dataSource">Data Source</label>
+                <select id="dataSource" class="form-select">
+                    <option value="grouplens">GroupLens (Official)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="datasetSize">Dataset Size</label>
+                <select id="datasetSize" class="form-select">
+                    <option value="medium">Medium (1M ratings) - Recommended</option>
+                    <option value="small">Small (100K ratings) - Quick testing</option>
+                    <option value="large">Large (25M ratings) - Full analysis</option>
+                </select>
+            </div>
+
+            <div class="tip-box">
+                <p><strong>Tip:</strong> Start with the medium dataset (1M) for comprehensive analysis. The small dataset is good for quick testing.</p>
+            </div>
+
+            <button class="load-button" onclick="loadSampleDataset()">
+                <i class="fas fa-download"></i>
+                Load Dataset
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Built with React + FastAPI | MovieLens Dataset Analysis</p>
+        </div>
+    </div>
+
     <script src="dataset.js"></script>
 </body>
 </html>

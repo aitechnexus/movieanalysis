@@ -24,6 +24,9 @@ class DatasetManager {
 
     async checkApiConnection() {
         try {
+            // Add a small delay to ensure DOM is fully loaded
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             const response = await fetch(`${this.apiBaseUrl}/status`);
             if (response.ok) {
                 this.updateApiStatus(true);
@@ -37,11 +40,47 @@ class DatasetManager {
     }
 
     updateApiStatus(connected) {
-        const indicator = document.getElementById('apiStatus');
-        const text = document.getElementById('apiStatusText');
+        console.log('updateApiStatus called with connected:', connected);
         
-        indicator.classList.toggle('connected', connected);
-        text.textContent = connected ? 'Connected' : 'Disconnected';
+        // Wait for elements to be available with retry mechanism
+        const waitForElement = (id, maxRetries = 10) => {
+            return new Promise((resolve, reject) => {
+                let retries = 0;
+                const checkElement = () => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        console.log(`Element ${id} found after ${retries} retries`);
+                        resolve(element);
+                    } else if (retries < maxRetries) {
+                        retries++;
+                        console.log(`Element ${id} not found, retry ${retries}/${maxRetries}`);
+                        setTimeout(checkElement, 100);
+                    } else {
+                        console.error(`Element ${id} not found after ${maxRetries} retries`);
+                        reject(new Error(`Element ${id} not found`));
+                    }
+                };
+                checkElement();
+            });
+        };
+
+        // Use the retry mechanism for both elements
+        Promise.all([
+            waitForElement('apiStatus'),
+            waitForElement('apiStatusText')
+        ]).then(([indicator, text]) => {
+            if (connected) {
+                indicator.classList.remove('offline');
+                indicator.classList.add('connected');
+                text.textContent = 'API Connected';
+            } else {
+                indicator.classList.remove('connected');
+                indicator.classList.add('offline');
+                text.textContent = 'API Disconnected';
+            }
+        }).catch(error => {
+            console.error('Failed to update API status:', error);
+        });
     }
 
     setupEventListeners() {
@@ -174,9 +213,39 @@ class DatasetManager {
     }
 
     updateDatasetStatus(status) {
-        document.getElementById('currentDataset').textContent = status.current_dataset || 'None loaded';
-        document.getElementById('datasetStatus').textContent = status.status || 'Not loaded';
-        document.getElementById('lastUpdated').textContent = status.last_updated || 'Never';
+        // Update status display
+        const isLoaded = status.loaded || false;
+        document.getElementById('currentDataset').textContent = isLoaded ? 'MovieLens Dataset' : 'None loaded';
+        document.getElementById('datasetStatus').textContent = isLoaded ? 'Loaded' : 'Not loaded';
+        document.getElementById('lastUpdated').textContent = isLoaded ? new Date().toLocaleString() : 'Never';
+        
+        // Enable/disable navigation buttons based on dataset status
+        this.updateNavigationButtons(isLoaded);
+    }
+
+    updateNavigationButtons(isLoaded) {
+        // Get all navigation buttons that should be enabled/disabled
+        const navButtons = document.querySelectorAll('.nav-btn');
+        
+        navButtons.forEach(button => {
+            const buttonText = button.textContent.trim();
+            
+            // Enable/disable buttons based on dataset status
+            // Keep Documentation always enabled, enable others only when data is loaded
+            if (buttonText === 'Documentation' || buttonText === 'Dataset') {
+                // These buttons are always enabled
+                button.disabled = false;
+                button.removeAttribute('title');
+            } else if (buttonText === 'Dashboard' || buttonText === 'Trends' || buttonText === 'Reports') {
+                // These buttons require loaded data
+                button.disabled = !isLoaded;
+                if (!isLoaded) {
+                    button.setAttribute('title', 'Load data first');
+                } else {
+                    button.removeAttribute('title');
+                }
+            }
+        });
     }
 
     async loadSampleDataset() {
@@ -294,7 +363,7 @@ class DatasetManager {
         try {
             this.updateProgress(10, 'Validating URL...');
             
-            const response = await fetch(`${this.apiBaseUrl}/dataset/import-url`, {
+            const response = await fetch(`${this.apiBaseUrl}/dataset/load-url`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -423,21 +492,40 @@ class DatasetManager {
 
     showLoading(show, text = 'Loading...') {
         console.log(`DatasetManager: showLoading called with show=${show}, text="${text}"`);
-        const overlay = document.getElementById('loadingOverlay');
-        const loadingText = document.getElementById('loadingText');
         
-        if (!overlay) {
-            console.error('DatasetManager: loadingOverlay element not found!');
-            return;
-        }
-        if (!loadingText) {
-            console.error('DatasetManager: loadingText element not found!');
-            return;
-        }
-        
-        overlay.classList.toggle('hidden', !show);
-        loadingText.textContent = text;
-        console.log(`DatasetManager: Loading overlay ${show ? 'shown' : 'hidden'}`);
+        // Wait for elements to be available with retry mechanism
+        const waitForElement = (id, maxRetries = 10) => {
+            return new Promise((resolve, reject) => {
+                let retries = 0;
+                const checkElement = () => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        console.log(`Element ${id} found after ${retries} retries`);
+                        resolve(element);
+                    } else if (retries < maxRetries) {
+                        retries++;
+                        console.log(`Element ${id} not found, retry ${retries}/${maxRetries}`);
+                        setTimeout(checkElement, 100);
+                    } else {
+                        console.error(`Element ${id} not found after ${maxRetries} retries`);
+                        reject(new Error(`Element ${id} not found`));
+                    }
+                };
+                checkElement();
+            });
+        };
+
+        // Use the retry mechanism for both elements
+        Promise.all([
+            waitForElement('loadingOverlay'),
+            waitForElement('loadingText')
+        ]).then(([overlay, loadingText]) => {
+            overlay.classList.toggle('hidden', !show);
+            loadingText.textContent = text;
+            console.log(`DatasetManager: Loading overlay ${show ? 'shown' : 'hidden'}`);
+        }).catch(error => {
+            console.error('Failed to show/hide loading overlay:', error);
+        });
     }
 
     showProgress(show) {

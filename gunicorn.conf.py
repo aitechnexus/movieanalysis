@@ -24,7 +24,7 @@ max_requests_jitter = 50
 
 # Logging
 accesslog = "-"  # Log to stdout
-errorlog = "-"   # Log to stderr
+errorlog = "-"  # Log to stderr
 loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
@@ -55,30 +55,33 @@ threads = 2
 graceful_timeout = 30
 
 # Environment variables
-raw_env = [
-    "PYTHONPATH=/app",
-    "FLASK_ENV=production"
-]
+raw_env = ["PYTHONPATH=/app", "FLASK_ENV=production"]
+
 
 def when_ready(server):
     """Called just after the server is started."""
     server.log.info("MovieLens Analysis API server is ready. PID: %s", os.getpid())
 
+
 def worker_int(worker):
     """Called just after a worker has been killed by a signal."""
     worker.log.info("Worker received INT or QUIT signal")
+
 
 def pre_fork(server, worker):
     """Called just before a worker is forked."""
     server.log.info("Worker spawned (pid: %s)", worker.pid)
 
+
 def post_fork(server, worker):
     """Called just after a worker has been forked."""
     server.log.info("Worker spawned (pid: %s)", worker.pid)
 
+
 def post_worker_init(worker):
     """Called just after a worker has initialized the application."""
     worker.log.info("Worker initialized (pid: %s)", worker.pid)
+
 
 def worker_abort(worker):
     """Called when a worker receives the SIGABRT signal."""

@@ -17,11 +17,11 @@ plt.rcParams["font.size"] = 10
 class InsightsVisualizer:
     """
     Advanced visualization engine for MovieLens analysis insights.
-    
+
     Creates publication-ready visualizations including statistical plots,
     trend analyses, heatmaps, and comprehensive dashboards. Supports
     multiple output formats and customizable styling options.
-    
+
     Features:
     - Rating distribution and statistical analysis plots
     - Top movies and genre popularity visualizations
@@ -29,30 +29,30 @@ class InsightsVisualizer:
     - User behavior and activity heatmaps
     - Correlation analysis and advanced statistical plots
     - Comprehensive dashboard generation
-    
+
     Attributes:
         output_dir (Path): Directory for saving generated visualizations
-        
+
     Examples:
         Basic usage:
         >>> from pathlib import Path
         >>> visualizer = InsightsVisualizer(Path('outputs/plots'))
-        >>> 
+        >>>
         >>> # Generate individual plots
         >>> rating_plot = visualizer.plot_rating_distribution(rating_data)
         >>> genre_plot = visualizer.plot_genre_popularity(genre_data)
-        >>> 
+        >>>
         >>> # Create comprehensive dashboard
         >>> dashboard = visualizer.plot_comprehensive_statistics(analyzer)
     """
-    
+
     def __init__(self, output_dir: Path):
         """
         Initialize the visualizer with output directory configuration.
-        
+
         Args:
             output_dir (Path): Directory to save generated visualizations
-            
+
         Examples:
             >>> from pathlib import Path
             >>> visualizer = InsightsVisualizer(Path('outputs/visualizations'))
@@ -61,17 +61,52 @@ class InsightsVisualizer:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def plot_rating_distribution(self, rating_dist: Dict[str, Any]) -> str:
+        """
+        Generate a comprehensive rating distribution visualization.
+
+        Creates a dual-panel plot showing both the distribution histogram
+        and statistical summary. This visualization helps understand the
+        overall rating patterns and user behavior in the dataset.
+
+        Args:
+            rating_dist (Dict[str, Any]): Rating distribution data containing
+                'distribution' (rating counts) and 'statistics' (summary stats)
+
+        Returns:
+            str: Path to the saved visualization file
+
+        Visualization Components:
+            - Left panel: Bar chart of rating frequencies with count labels
+            - Right panel: Statistical summary box with key metrics
+
+        Statistical Metrics Displayed:
+            - Central tendency: mean, median
+            - Variability: standard deviation, min/max, quartiles
+            - Distribution shape indicators
+        """
         logger.info("    → Generating rating distribution plot...")
+
+        # Create figure with two subplots for distribution and statistics
         fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Extract rating distribution data
         distribution = rating_dist["distribution"]
         ratings, counts = list(distribution.keys()), list(distribution.values())
+
+        # Left panel: Rating distribution bar chart
+        # Use steelblue color with transparency for professional appearance
         axes[0].bar(ratings, counts, color="steelblue", edgecolor="black", alpha=0.7)
         axes[0].set_xlabel("Rating")
         axes[0].set_ylabel("Count")
         axes[0].set_title("Rating Distribution")
-        axes[0].grid(axis="y", alpha=0.3)
+        axes[0].grid(axis="y", alpha=0.3)  # Subtle horizontal grid lines
+
+        # Add count labels on top of each bar for precise values
         for r, c in zip(ratings, counts):
             axes[0].text(r, c, f"{c:,}", ha="center", va="bottom", fontsize=9)
+
+        # Right panel: Statistical summary display
+        # Extract statistical measures from the data
         s = rating_dist["statistics"]
         stats_text = f"""
 Mean: {s['mean']:.3f}
@@ -84,6 +119,9 @@ Max: {s['max']:.1f}
 Q1: {s['q25']:.3f}
 Q3: {s['q75']:.3f}
 """
+
+        # Display statistics in a formatted text box
+        # Use monospace font for alignment and wheat background for readability
         axes[1].text(
             0.1,
             0.5,
@@ -93,20 +131,45 @@ Q3: {s['q75']:.3f}
             va="center",
             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
         )
-        axes[1].axis("off")
+        axes[1].axis("off")  # Remove axes for clean text display
         axes[1].set_title("Statistics Summary")
-        plt.tight_layout()
+
+        # Finalize and save the plot
+        plt.tight_layout()  # Optimize spacing between subplots
         path = self.output_dir / "rating_distribution.png"
-        plt.savefig(path, dpi=300, bbox_inches="tight")
+        plt.savefig(path, dpi=300, bbox_inches="tight")  # High-quality output
         plt.close()
         return str(path)
 
     def plot_top_movies(self, top_movies: List[Dict[str, Any]]) -> str:
+        """
+        Generate a horizontal bar chart of top-rated movies.
+
+        Creates a professional visualization showing the highest-rated movies
+        based on weighted rating calculations (IMDb formula). Includes vote
+        counts and handles edge cases like empty datasets.
+
+        Args:
+            top_movies (List[Dict[str, Any]]): List of movie dictionaries containing
+                title, weighted_rating, vote_count, and other movie metadata
+
+        Returns:
+            str: Path to the saved visualization file
+
+        Visualization Features:
+            - Horizontal bar chart for better title readability
+            - Truncated titles to prevent overlap
+            - Rating values and vote counts as annotations
+            - Professional coral color scheme with transparency
+        """
         logger.info("    → Generating top movies plot...")
         import numpy as np
         import pandas as pd
 
+        # Convert to DataFrame and limit to top 15 for readability
         df = pd.DataFrame(top_movies).head(15)
+
+        # Handle edge case: no movies meet the criteria
         if df.empty:
             path = self.output_dir / "top_movies.png"
             plt.figure()
@@ -114,28 +177,42 @@ Q3: {s['q75']:.3f}
             plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close()
             return str(path)
+
+        # Create horizontal bar chart for better title readability
         fig, ax = plt.subplots(figsize=(14, 8))
         y_pos = np.arange(len(df))
+
+        # Use coral color with transparency for visual appeal
         ax.barh(y_pos, df["weighted_rating"], color="coral", alpha=0.8)
+
+        # Configure y-axis with movie titles
         ax.set_yticks(y_pos)
+        # Truncate long titles to prevent overlap and maintain readability
         ax.set_yticklabels(
             [
                 f"{row['title'][:40]}..." if len(row["title"]) > 40 else row["title"]
                 for _, row in df.iterrows()
             ]
         )
+
+        # Invert y-axis to show highest-rated movies at the top
         ax.invert_yaxis()
         ax.set_xlabel("Weighted Rating (WR)")
         ax.set_title("Top 15 Movies by Weighted Rating (IMDb Formula)")
-        ax.grid(axis="x", alpha=0.3)
+        ax.grid(axis="x", alpha=0.3)  # Subtle vertical grid lines
+
+        # Add value labels with rating and vote count information
+        # Position labels slightly to the right of bars for clarity
         for i, (_, row) in enumerate(df.iterrows()):
             ax.text(
-                row["weighted_rating"] + 0.02,
+                row["weighted_rating"] + 0.02,  # Small offset from bar end
                 i,
                 f"{row['weighted_rating']:.2f} ({row['vote_count']:,} votes)",
                 va="center",
                 fontsize=9,
             )
+
+        # Finalize and save the plot
         plt.tight_layout()
         path = self.output_dir / "top_movies.png"
         plt.savefig(path, dpi=300, bbox_inches="tight")
@@ -474,7 +551,9 @@ Heavy Users: {activity['heavy']:,}
             ratings_df[ratings_df["rating"] == r]["rating"]
             for r in sorted(ratings_df["rating"].unique())
         ]
-        axes[0, 1].boxplot(rating_groups, tick_labels=sorted(ratings_df["rating"].unique()))
+        axes[0, 1].boxplot(
+            rating_groups, tick_labels=sorted(ratings_df["rating"].unique())
+        )
         axes[0, 1].set_title("Box Plot: Rating Distribution")
         axes[0, 1].set_xlabel("Rating Value")
         axes[0, 1].set_ylabel("Distribution")
@@ -676,19 +755,23 @@ Heavy Users: {activity['heavy']:,}
 
         # Only use top 15 most common genres for performance
         top_genres = pd.Series(all_genres).value_counts().head(15).index.tolist()
-        logger.info(f"    → Using top {len(top_genres)} genres for correlation analysis")
+        logger.info(
+            f"    → Using top {len(top_genres)} genres for correlation analysis"
+        )
 
         # Create optimized genre matrix using only top genres
         genre_data = []
         for _, row in movies_df.iterrows():
             if pd.notna(row["genres"]):
                 movie_genres = row["genres"].split("|")
-                genre_row = {genre: 1 if genre in movie_genres else 0 for genre in top_genres}
-                genre_row['movieId'] = row["movieId"]
+                genre_row = {
+                    genre: 1 if genre in movie_genres else 0 for genre in top_genres
+                }
+                genre_row["movieId"] = row["movieId"]
                 genre_data.append(genre_row)
 
         if genre_data:
-            genre_df = pd.DataFrame(genre_data).set_index('movieId')
+            genre_df = pd.DataFrame(genre_data).set_index("movieId")
             genre_corr = genre_df.corr()
 
             # Create correlation heatmap
@@ -702,7 +785,7 @@ Heavy Users: {activity['heavy']:,}
                 linewidths=0.5,
                 cbar_kws={"shrink": 0.8},
                 ax=axes[1, 1],
-                annot=False  # Disable annotations for better performance
+                annot=False,  # Disable annotations for better performance
             )
             axes[1, 1].set_title(f"Genre Correlation Matrix (Top {len(top_genres)})")
             plt.setp(axes[1, 1].get_xticklabels(), rotation=45, ha="right")
@@ -734,7 +817,9 @@ Heavy Users: {activity['heavy']:,}
         # Sample data for better performance
         if len(ratings_df) > 100000:
             ratings_df = ratings_df.sample(100000, random_state=42)
-            logger.info(f"    → Sampled {len(ratings_df)} ratings for percentage analysis")
+            logger.info(
+                f"    → Sampled {len(ratings_df)} ratings for percentage analysis"
+            )
 
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
@@ -855,283 +940,396 @@ Heavy Users: {activity['heavy']:,}
     def create_correlation_heatmap(self, analyzer, method: str = "pearson") -> str:
         """
         Create a correlation heatmap for movie ratings and features.
-        
+
         Args:
             analyzer: MovieAnalyzer instance with loaded data
             method: Correlation method ('pearson', 'spearman', 'kendall')
-            
+
         Returns:
             str: Path to the saved heatmap image
         """
         logger.info("    → Generating correlation heatmap...")
-        
+
         try:
             # Prepare data for correlation analysis
             ratings_df = analyzer.ratings.copy()
             movies_df = analyzer.movies.copy()
-            
+
             # Create movie features matrix
-            movie_stats = ratings_df.groupby('movieId').agg({
-                'rating': ['mean', 'std', 'count'],
-                'userId': 'nunique'
-            }).round(3)
-            
-            movie_stats.columns = ['avg_rating', 'rating_std', 'rating_count', 'unique_users']
+            movie_stats = (
+                ratings_df.groupby("movieId")
+                .agg({"rating": ["mean", "std", "count"], "userId": "nunique"})
+                .round(3)
+            )
+
+            movie_stats.columns = [
+                "avg_rating",
+                "rating_std",
+                "rating_count",
+                "unique_users",
+            ]
             movie_stats = movie_stats.reset_index()
-            
+
             # Add genre features
             movies_with_genres = movies_df.copy()
-            
+
             # Extract top genres for correlation
             all_genres = []
-            for genres in movies_with_genres['genres']:
-                all_genres.extend(genres.split('|'))
-            
+            for genres in movies_with_genres["genres"]:
+                all_genres.extend(genres.split("|"))
+
             top_genres = pd.Series(all_genres).value_counts().head(10).index.tolist()
-            
+
             # Create binary genre features
             for genre in top_genres:
-                movies_with_genres[f'is_{genre}'] = movies_with_genres['genres'].str.contains(genre).astype(int)
-            
+                movies_with_genres[f"is_{genre}"] = (
+                    movies_with_genres["genres"].str.contains(genre).astype(int)
+                )
+
             # Merge movie stats with genre features
             correlation_data = movie_stats.merge(
-                movies_with_genres[['movieId'] + [f'is_{genre}' for genre in top_genres]], 
-                on='movieId'
+                movies_with_genres[
+                    ["movieId"] + [f"is_{genre}" for genre in top_genres]
+                ],
+                on="movieId",
             )
-            
+
             # Select numeric columns for correlation
-            numeric_cols = ['avg_rating', 'rating_std', 'rating_count', 'unique_users'] + [f'is_{genre}' for genre in top_genres]
+            numeric_cols = [
+                "avg_rating",
+                "rating_std",
+                "rating_count",
+                "unique_users",
+            ] + [f"is_{genre}" for genre in top_genres]
             corr_matrix = correlation_data[numeric_cols].corr(method=method)
-            
+
             # Create the heatmap
             plt.figure(figsize=(14, 12))
-            
+
             # Create mask for upper triangle
             mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
-            
+
             # Generate heatmap
             sns.heatmap(
                 corr_matrix,
                 mask=mask,
                 annot=True,
-                cmap='RdBu_r',
+                cmap="RdBu_r",
                 center=0,
                 square=True,
-                fmt='.2f',
-                cbar_kws={"shrink": .8},
-                linewidths=0.5
+                fmt=".2f",
+                cbar_kws={"shrink": 0.8},
+                linewidths=0.5,
             )
-            
-            plt.title(f'Movie Features Correlation Heatmap ({method.title()})', fontsize=16, pad=20)
-            plt.xlabel('Features', fontsize=12)
-            plt.ylabel('Features', fontsize=12)
-            plt.xticks(rotation=45, ha='right')
+
+            plt.title(
+                f"Movie Features Correlation Heatmap ({method.title()})",
+                fontsize=16,
+                pad=20,
+            )
+            plt.xlabel("Features", fontsize=12)
+            plt.ylabel("Features", fontsize=12)
+            plt.xticks(rotation=45, ha="right")
             plt.yticks(rotation=0)
-            
+
             plt.tight_layout()
             path = self.output_dir / f"correlation_heatmap_{method}.png"
             plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close()
-            
+
             logger.info(f"    ✓ Correlation heatmap saved to {path}")
             return str(path)
-            
+
         except Exception as e:
             logger.error(f"Error creating correlation heatmap: {e}")
             # Create a simple fallback heatmap
             plt.figure(figsize=(10, 8))
-            
+
             # Simple correlation of basic rating statistics
-            simple_stats = analyzer.ratings.groupby('movieId').agg({
-                'rating': ['mean', 'std', 'count']
-            }).round(3)
-            simple_stats.columns = ['avg_rating', 'rating_std', 'rating_count']
-            
-            corr_matrix = simple_stats.corr(method=method)
-            
-            sns.heatmap(
-                corr_matrix,
-                annot=True,
-                cmap='RdBu_r',
-                center=0,
-                square=True,
-                fmt='.2f'
+            simple_stats = (
+                analyzer.ratings.groupby("movieId")
+                .agg({"rating": ["mean", "std", "count"]})
+                .round(3)
             )
-            
-            plt.title(f'Basic Rating Statistics Correlation ({method.title()})', fontsize=14)
+            simple_stats.columns = ["avg_rating", "rating_std", "rating_count"]
+
+            corr_matrix = simple_stats.corr(method=method)
+
+            sns.heatmap(
+                corr_matrix, annot=True, cmap="RdBu_r", center=0, square=True, fmt=".2f"
+            )
+
+            plt.title(
+                f"Basic Rating Statistics Correlation ({method.title()})", fontsize=14
+            )
             plt.tight_layout()
-            
+
             path = self.output_dir / f"simple_correlation_heatmap_{method}.png"
             plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close()
-            
+
             return str(path)
 
-    def plot_movie_similarity_network(self, analyzer, movie_id: int = None, 
-                                    similarity_threshold: float = 0.3, max_nodes: int = 20) -> str:
+    def plot_movie_similarity_network(
+        self,
+        analyzer,
+        movie_id: int = None,
+        similarity_threshold: float = 0.3,
+        max_nodes: int = 20,
+    ) -> str:
         """
         Create a network visualization of movie similarities.
-        
+
         Args:
             analyzer: MovieAnalyzer instance with loaded data
             movie_id: Central movie ID for the network (if None, uses top-rated movie)
             similarity_threshold: Minimum similarity score to show connections
             max_nodes: Maximum number of nodes to display
-            
+
         Returns:
             str: Path to the saved network visualization
         """
         logger.info("    → Generating movie similarity network...")
-        
+
         try:
             # If no movie_id specified, use the top-rated movie
             if movie_id is None:
                 top_movies = analyzer.get_top_movies(limit=1)
                 if top_movies:
-                    movie_id = top_movies[0]['movieId']
+                    movie_id = top_movies[0]["movieId"]
                 else:
                     # Fallback to first movie in dataset
-                    movie_id = analyzer.movies.iloc[0]['movieId']
-            
+                    movie_id = analyzer.movies.iloc[0]["movieId"]
+
             # Get similar movies
             similar_movies = analyzer.calculate_movie_similarity(
-                movie_id, method="hybrid", limit=max_nodes-1
+                movie_id, method="hybrid", limit=max_nodes - 1
             )
-            
+
             if not similar_movies:
                 # Fallback to genre similarity if hybrid fails
                 similar_movies = analyzer.calculate_movie_similarity(
-                    movie_id, method="genre", limit=max_nodes-1
+                    movie_id, method="genre", limit=max_nodes - 1
                 )
-            
+
             # Get central movie info
-            central_movie = analyzer.movies[analyzer.movies['movieId'] == movie_id].iloc[0]
-            
+            central_movie = analyzer.movies[
+                analyzer.movies["movieId"] == movie_id
+            ].iloc[0]
+
             # Create network data
-            nodes = [{'id': movie_id, 'title': central_movie['title'], 'similarity': 1.0, 'is_central': True}]
+            nodes = [
+                {
+                    "id": movie_id,
+                    "title": central_movie["title"],
+                    "similarity": 1.0,
+                    "is_central": True,
+                }
+            ]
             edges = []
-            
+
             for movie in similar_movies:
-                if movie['similarity_score'] >= similarity_threshold:
-                    nodes.append({
-                        'id': movie['movieId'],
-                        'title': movie['title'][:30] + ('...' if len(movie['title']) > 30 else ''),
-                        'similarity': movie['similarity_score'],
-                        'is_central': False
-                    })
-                    edges.append({
-                        'source': movie_id,
-                        'target': movie['movieId'],
-                        'weight': movie['similarity_score']
-                    })
-            
+                if movie["similarity_score"] >= similarity_threshold:
+                    nodes.append(
+                        {
+                            "id": movie["movieId"],
+                            "title": movie["title"][:30]
+                            + ("..." if len(movie["title"]) > 30 else ""),
+                            "similarity": movie["similarity_score"],
+                            "is_central": False,
+                        }
+                    )
+                    edges.append(
+                        {
+                            "source": movie_id,
+                            "target": movie["movieId"],
+                            "weight": movie["similarity_score"],
+                        }
+                    )
+
             # Create the network visualization
             fig, ax = plt.subplots(figsize=(16, 12))
-            
+
             # Calculate positions using a circular layout
             n_nodes = len(nodes)
             if n_nodes > 1:
-                angles = np.linspace(0, 2*np.pi, n_nodes, endpoint=False)
-                
+                angles = np.linspace(0, 2 * np.pi, n_nodes, endpoint=False)
+
                 # Central node at center
                 positions = {movie_id: (0, 0)}
-                
+
                 # Other nodes in circle
                 radius = 3
                 for i, node in enumerate(nodes[1:], 1):
-                    angle = angles[i-1]
+                    angle = angles[i - 1]
                     x = radius * np.cos(angle)
                     y = radius * np.sin(angle)
-                    positions[node['id']] = (x, y)
-                
+                    positions[node["id"]] = (x, y)
+
                 # Draw edges
                 for edge in edges:
-                    source_pos = positions[edge['source']]
-                    target_pos = positions[edge['target']]
-                    
+                    source_pos = positions[edge["source"]]
+                    target_pos = positions[edge["target"]]
+
                     # Line width based on similarity
-                    line_width = edge['weight'] * 5
-                    alpha = min(edge['weight'] + 0.3, 1.0)
-                    
-                    ax.plot([source_pos[0], target_pos[0]], 
-                           [source_pos[1], target_pos[1]], 
-                           'gray', linewidth=line_width, alpha=alpha)
-                    
+                    line_width = edge["weight"] * 5
+                    alpha = min(edge["weight"] + 0.3, 1.0)
+
+                    ax.plot(
+                        [source_pos[0], target_pos[0]],
+                        [source_pos[1], target_pos[1]],
+                        "gray",
+                        linewidth=line_width,
+                        alpha=alpha,
+                    )
+
                     # Add similarity score label
                     mid_x = (source_pos[0] + target_pos[0]) / 2
                     mid_y = (source_pos[1] + target_pos[1]) / 2
-                    ax.text(mid_x, mid_y, f'{edge["weight"]:.2f}', 
-                           fontsize=8, ha='center', va='center',
-                           bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.7))
-                
+                    ax.text(
+                        mid_x,
+                        mid_y,
+                        f'{edge["weight"]:.2f}',
+                        fontsize=8,
+                        ha="center",
+                        va="center",
+                        bbox=dict(
+                            boxstyle="round,pad=0.2", facecolor="white", alpha=0.7
+                        ),
+                    )
+
                 # Draw nodes
                 for node in nodes:
-                    pos = positions[node['id']]
-                    
-                    if node['is_central']:
+                    pos = positions[node["id"]]
+
+                    if node["is_central"]:
                         # Central node - larger and different color
-                        circle = plt.Circle(pos, 0.3, color='red', alpha=0.8, zorder=3)
+                        circle = plt.Circle(pos, 0.3, color="red", alpha=0.8, zorder=3)
                         ax.add_patch(circle)
-                        ax.text(pos[0], pos[1]-0.6, node['title'], 
-                               fontsize=12, ha='center', va='top', weight='bold',
-                               bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.8))
+                        ax.text(
+                            pos[0],
+                            pos[1] - 0.6,
+                            node["title"],
+                            fontsize=12,
+                            ha="center",
+                            va="top",
+                            weight="bold",
+                            bbox=dict(
+                                boxstyle="round,pad=0.3",
+                                facecolor="lightcoral",
+                                alpha=0.8,
+                            ),
+                        )
                     else:
                         # Similar nodes - size based on similarity
-                        size = 0.1 + (node['similarity'] * 0.2)
-                        circle = plt.Circle(pos, size, color='steelblue', alpha=0.7, zorder=2)
+                        size = 0.1 + (node["similarity"] * 0.2)
+                        circle = plt.Circle(
+                            pos, size, color="steelblue", alpha=0.7, zorder=2
+                        )
                         ax.add_patch(circle)
-                        ax.text(pos[0], pos[1]-size-0.2, node['title'], 
-                               fontsize=9, ha='center', va='top',
-                               bbox=dict(boxstyle="round,pad=0.2", facecolor="lightblue", alpha=0.7))
-                
+                        ax.text(
+                            pos[0],
+                            pos[1] - size - 0.2,
+                            node["title"],
+                            fontsize=9,
+                            ha="center",
+                            va="top",
+                            bbox=dict(
+                                boxstyle="round,pad=0.2",
+                                facecolor="lightblue",
+                                alpha=0.7,
+                            ),
+                        )
+
                 # Set equal aspect ratio and limits
                 ax.set_xlim(-4, 4)
                 ax.set_ylim(-4, 4)
-                ax.set_aspect('equal')
-                ax.axis('off')
-                
+                ax.set_aspect("equal")
+                ax.axis("off")
+
                 # Add title and legend
-                ax.set_title(f'Movie Similarity Network\nCentral Movie: {central_movie["title"]}', 
-                           fontsize=16, pad=20)
-                
+                ax.set_title(
+                    f'Movie Similarity Network\nCentral Movie: {central_movie["title"]}',
+                    fontsize=16,
+                    pad=20,
+                )
+
                 # Add legend
                 legend_elements = [
-                    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', 
-                              markersize=15, label='Central Movie'),
-                    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='steelblue', 
-                              markersize=10, label='Similar Movies'),
-                    plt.Line2D([0], [0], color='gray', linewidth=3, label='Similarity Connection')
+                    plt.Line2D(
+                        [0],
+                        [0],
+                        marker="o",
+                        color="w",
+                        markerfacecolor="red",
+                        markersize=15,
+                        label="Central Movie",
+                    ),
+                    plt.Line2D(
+                        [0],
+                        [0],
+                        marker="o",
+                        color="w",
+                        markerfacecolor="steelblue",
+                        markersize=10,
+                        label="Similar Movies",
+                    ),
+                    plt.Line2D(
+                        [0],
+                        [0],
+                        color="gray",
+                        linewidth=3,
+                        label="Similarity Connection",
+                    ),
                 ]
-                ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1, 1))
-                
+                ax.legend(
+                    handles=legend_elements, loc="upper right", bbox_to_anchor=(1, 1)
+                )
+
             else:
-                ax.text(0.5, 0.5, 'No similar movies found\nwith sufficient similarity', 
-                       ha='center', va='center', transform=ax.transAxes, fontsize=14)
-                ax.set_title(f'Movie Similarity Network\nCentral Movie: {central_movie["title"]}', 
-                           fontsize=16)
-                ax.axis('off')
-            
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No similar movies found\nwith sufficient similarity",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                    fontsize=14,
+                )
+                ax.set_title(
+                    f'Movie Similarity Network\nCentral Movie: {central_movie["title"]}',
+                    fontsize=16,
+                )
+                ax.axis("off")
+
             plt.tight_layout()
             path = self.output_dir / f"movie_similarity_network_{movie_id}.png"
             plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close()
-            
+
             logger.info(f"    ✓ Movie similarity network saved to {path}")
             return str(path)
-            
+
         except Exception as e:
             logger.error(f"Error creating movie similarity network: {e}")
-            
+
             # Create a simple fallback visualization
             fig, ax = plt.subplots(figsize=(10, 8))
-            ax.text(0.5, 0.5, f'Error creating similarity network\nfor movie ID: {movie_id}\n\nError: {str(e)}', 
-                   ha='center', va='center', transform=ax.transAxes, fontsize=12)
-            ax.set_title('Movie Similarity Network - Error', fontsize=14)
-            ax.axis('off')
-            
+            ax.text(
+                0.5,
+                0.5,
+                f"Error creating similarity network\nfor movie ID: {movie_id}\n\nError: {str(e)}",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Movie Similarity Network - Error", fontsize=14)
+            ax.axis("off")
+
             plt.tight_layout()
             path = self.output_dir / f"movie_similarity_network_error_{movie_id}.png"
             plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close()
-            
+
             return str(path)

@@ -1,4 +1,5 @@
 """Pytest configuration and shared fixtures"""
+
 import os
 import tempfile
 from pathlib import Path
@@ -16,37 +17,52 @@ from src.visualizer import InsightsVisualizer
 @pytest.fixture(scope="session")
 def sample_movies_data() -> pd.DataFrame:
     """Create sample movies data for testing"""
-    return pd.DataFrame({
-        'movieId': [1, 2, 3, 4, 5],
-        'title': [
-            'Toy Story (1995)',
-            'Jumanji (1995)', 
-            'Grumpier Old Men (1995)',
-            'Waiting to Exhale (1995)',
-            'Father of the Bride Part II (1995)'
-        ],
-        'genres': [
-            'Adventure|Animation|Children|Comedy|Fantasy',
-            'Adventure|Children|Fantasy',
-            'Comedy|Romance',
-            'Comedy|Drama|Romance',
-            'Comedy'
-        ]
-    })
+    return pd.DataFrame(
+        {
+            "movieId": [1, 2, 3, 4, 5],
+            "title": [
+                "Toy Story (1995)",
+                "Jumanji (1995)",
+                "Grumpier Old Men (1995)",
+                "Waiting to Exhale (1995)",
+                "Father of the Bride Part II (1995)",
+            ],
+            "genres": [
+                "Adventure|Animation|Children|Comedy|Fantasy",
+                "Adventure|Children|Fantasy",
+                "Comedy|Romance",
+                "Comedy|Drama|Romance",
+                "Comedy",
+            ],
+        }
+    )
 
 
 @pytest.fixture(scope="session")
 def sample_ratings_data() -> pd.DataFrame:
     """Create sample ratings data for testing"""
-    return pd.DataFrame({
-        'userId': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5] * 5,
-        'movieId': [1, 2, 1, 3, 2, 4, 3, 5, 4, 1] * 5,
-        'rating': [4.0, 3.5, 5.0, 2.5, 4.5, 3.0, 4.0, 3.5, 2.0, 4.5] * 5,
-        'timestamp': pd.to_datetime([
-            '2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04', '2020-01-05',
-            '2020-01-06', '2020-01-07', '2020-01-08', '2020-01-09', '2020-01-10'
-        ] * 5)
-    })
+    return pd.DataFrame(
+        {
+            "userId": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5] * 5,
+            "movieId": [1, 2, 1, 3, 2, 4, 3, 5, 4, 1] * 5,
+            "rating": [4.0, 3.5, 5.0, 2.5, 4.5, 3.0, 4.0, 3.5, 2.0, 4.5] * 5,
+            "timestamp": pd.to_datetime(
+                [
+                    "2020-01-01",
+                    "2020-01-02",
+                    "2020-01-03",
+                    "2020-01-04",
+                    "2020-01-05",
+                    "2020-01-06",
+                    "2020-01-07",
+                    "2020-01-08",
+                    "2020-01-09",
+                    "2020-01-10",
+                ]
+                * 5
+            ),
+        }
+    )
 
 
 @pytest.fixture
@@ -76,7 +92,9 @@ def data_processor() -> DataProcessor:
 
 
 @pytest.fixture
-def movie_analyzer(sample_movies_data: pd.DataFrame, sample_ratings_data: pd.DataFrame) -> MovieAnalyzer:
+def movie_analyzer(
+    sample_movies_data: pd.DataFrame, sample_ratings_data: pd.DataFrame
+) -> MovieAnalyzer:
     """Create MovieAnalyzer instance with sample data"""
     return MovieAnalyzer(sample_movies_data, sample_ratings_data)
 
@@ -99,9 +117,9 @@ def setup_test_environment():
     # Set test environment variables
     os.environ["TESTING"] = "1"
     os.environ["LOG_LEVEL"] = "ERROR"
-    
+
     yield
-    
+
     # Cleanup
     if "TESTING" in os.environ:
         del os.environ["TESTING"]
@@ -113,6 +131,7 @@ def setup_test_environment():
 def client():
     """Create Flask test client"""
     import app
-    app.app.config['TESTING'] = True
+
+    app.app.config["TESTING"] = True
     with app.app.test_client() as client:
         yield client
