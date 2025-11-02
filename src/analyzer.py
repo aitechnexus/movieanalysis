@@ -842,3 +842,63 @@ class MovieAnalyzer:
             >>> print(f"Found {len(top_movies)} top-rated movies")
         """
         return self.get_top_movies(limit=n, min_ratings=min_ratings, m_percentile=m_percentile)
+
+    def get_statistics_summary(self) -> Dict[str, Any]:
+        """
+        Get comprehensive statistics summary of the dataset.
+        
+        Returns:
+            Dict[str, Any]: Dictionary containing dataset statistics
+        """
+        return {
+            'total_movies': len(self.movies),
+            'total_ratings': len(self.ratings),
+            'total_users': self.ratings['userId'].nunique(),
+            'avg_rating': self.ratings['rating'].mean(),
+            'rating_std': self.ratings['rating'].std(),
+            'min_rating': self.ratings['rating'].min(),
+            'max_rating': self.ratings['rating'].max(),
+            'ratings_per_movie': self.ratings.groupby('movieId').size().mean(),
+            'ratings_per_user': self.ratings.groupby('userId').size().mean(),
+            'most_rated_movie': self.movies.merge(
+                self.ratings.groupby('movieId').size().reset_index(name='count'),
+                on='movieId'
+            ).nlargest(1, 'count')['title'].iloc[0] if len(self.ratings) > 0 else None
+        }
+
+    def analyze_genres(self) -> Dict[str, Any]:
+        """
+        Alias for analyze_genre_trends method for backward compatibility.
+        
+        Returns:
+            Dict[str, Any]: Genre analysis results
+        """
+        return self.analyze_genre_trends()
+
+    def get_most_popular_movies(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Get most popular movies based on rating count.
+        
+        Args:
+            limit (int): Maximum number of movies to return
+            
+        Returns:
+            List[Dict[str, Any]]: List of most popular movies
+        """
+        movie_popularity = self.ratings.groupby('movieId').agg({
+            'rating': ['count', 'mean']
+        }).round(3)
+        movie_popularity.columns = ['rating_count', 'avg_rating']
+        movie_popularity = movie_popularity.reset_index()
+        
+        # Merge with movie titles
+        popular_movies = movie_popularity.merge(
+            self.movies[['movieId', 'title', 'genres']], 
+            on='movieId', 
+            how='left'
+        )
+        
+        # Sort by rating count (popularity)
+        popular_movies = popular_movies.nlargest(limit, 'rating_count')
+        
+        return popular_movies.to_dict('records')

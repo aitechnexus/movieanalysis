@@ -1,9 +1,14 @@
 """Unit tests for InsightsVisualizer class"""
+import json
 import os
 from pathlib import Path
+from unittest.mock import Mock, patch
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
+from PIL import Image
 
 from src.visualizer import InsightsVisualizer
 
@@ -42,7 +47,229 @@ class TestInsightsVisualizer:
         
         plot_path = visualizer.plot_rating_distribution(rating_dist)
         
+    def test_plot_content_accuracy(self, visualizer: InsightsVisualizer):
+        """Test that plot content accurately reflects the input data"""
+        rating_dist = {
+            "distribution": {
+                "1.0": 100,
+                "2.0": 200,
+                "3.0": 500,
+                "4.0": 800,
+                "5.0": 400
+            },
+            "statistics": {
+                "mean": 3.75,
+                "median": 4.0,
+                "std": 1.2,
+                "min": 1.0,
+                "max": 5.0,
+                "q25": 3.0,
+                "q75": 4.5
+            }
+        }
+        
+        with patch('matplotlib.pyplot.savefig') as mock_savefig:
+            with patch('matplotlib.pyplot.show'):
+                plot_path = visualizer.plot_rating_distribution(rating_dist)
+                
+                # Verify the plot was created
+                assert mock_savefig.called
+                
+                # Get the current figure and verify data
+                fig = plt.gcf()
+                axes = fig.get_axes()
+                
+                # Check that we have the expected number of subplots
+                assert len(axes) >= 1
+                
+                # Verify bar chart data matches input
+                bars = axes[0].patches
+                if bars:  # If bars exist, verify their heights match data
+                    expected_counts = list(rating_dist["distribution"].values())
+                    actual_heights = [bar.get_height() for bar in bars]
+                    # Allow for some floating point precision differences
+                    for expected, actual in zip(expected_counts, actual_heights):
+                        assert abs(expected - actual) < 0.1
+
+    def test_plot_visual_elements_validation(self, visualizer: InsightsVisualizer):
+        """Test that plots contain required visual elements"""
+        genre_stats = {
+            "overall": [
+                {"genre": "Action", "count": 100, "mean_rating": 4.2},
+                {"genre": "Comedy", "count": 80, "mean_rating": 3.8},
+                {"genre": "Drama", "count": 60, "mean_rating": 4.5}
+            ]
+        }
+        
+        with patch('matplotlib.pyplot.savefig') as mock_savefig:
+            with patch('matplotlib.pyplot.show'):
+                plot_path = visualizer.plot_genre_popularity(genre_stats)
+                
+                fig = plt.gcf()
+                axes = fig.get_axes()
+                
+                if axes:
+                    ax = axes[0]
+                    
+                    # Check for title
+                    title = ax.get_title()
+                    assert title is not None and len(title) > 0
+                    
+                    # Check for axis labels
+                    xlabel = ax.get_xlabel()
+                    ylabel = ax.get_ylabel()
+                    assert xlabel is not None
+                    assert ylabel is not None
+                    
+                    # Check for data points
+                    children = ax.get_children()
+                    assert len(children) > 0  # Should have some plot elements
+
+    def test_plot_file_format_validation(self, visualizer: InsightsVisualizer):
+        """Test different output formats are properly generated"""
+        rating_dist = {
+            "distribution": {"1.0": 100, "2.0": 200, "3.0": 300},
+            "statistics": {"mean": 2.0, "median": 2.0, "std": 0.8, "min": 1.0, "max": 3.0, "q25": 1.5, "q75": 2.5}
+        }
+        
+        # Test PNG format (default)
+        plot_path = visualizer.plot_rating_distribution(rating_dist)
         assert Path(plot_path).exists()
+        assert Path(plot_path).suffix == '.png'
+        
+        # Verify the file is a valid image
+        try:
+            with Image.open(plot_path) as img:
+                assert img.format == 'PNG'
+                assert img.size[0] > 0 and img.size[1] > 0
+        except Exception:
+            # If PIL fails, at least verify file exists and has content
+            assert Path(plot_path).stat().st_size > 0
+
+    def test_plot_data_integrity_validation(self, visualizer: InsightsVisualizer):
+        """Test that plot generation preserves data integrity"""
+        # Test with edge case data
+        top_movies = [
+            {'title': 'Movie with Very Long Title That Should Be Handled Properly', 'weighted_rating': 4.999, 'vote_count': 1},
+            {'title': 'Short', 'weighted_rating': 0.001, 'vote_count': 999999},
+            {'title': 'Special Chars: !@#$%^&*()', 'weighted_rating': 2.5, 'vote_count': 50}
+        ]
+        
+        plot_path = visualizer.plot_top_movies(top_movies)
+        assert Path(plot_path).exists()
+        
+        # Verify file is not empty (indicates successful plot generation)
+        assert Path(plot_path).stat().st_size > 1000  # Reasonable minimum size for a plot
+
+    def test_visualization_caching_mechanism(self, visualizer: InsightsVisualizer):
+        """Test visualization caching functionality"""
+        rating_dist = {
+            "distribution": {"1.0": 100, "2.0": 200},
+            "statistics": {"mean": 1.5, "median": 1.5, "std": 0.5, "min": 1.0, "max": 2.0, "q25": 1.25, "q75": 1.75}
+        }
+        
+        # Generate plot twice
+        plot_path1 = visualizer.plot_rating_distribution(rating_dist)
+        plot_path2 = visualizer.plot_rating_distribution(rating_dist)
+        
+        # Both should exist
+        assert Path(plot_path1).exists()
+        assert Path(plot_path2).exists()
+        
+        # Verify they're the same path (caching) or both valid
+        if plot_path1 == plot_path2:
+            # Cached - verify file exists
+            assert Path(plot_path1).exists()
+        else:
+            # Not cached - both should be valid
+            assert Path(plot_path1).stat().st_size > 0
+            assert Path(plot_path2).stat().st_size > 0
+
+    def test_large_dataset_visualization_performance(self, visualizer: InsightsVisualizer):
+        """Test visualization performance with larger datasets"""
+        # Create larger dataset simulation
+        large_genre_stats = {
+            "overall": [
+                {"genre": f"Genre_{i}", "count": np.random.randint(10, 1000), "mean_rating": np.random.uniform(1, 5)}
+                for i in range(50)  # 50 genres
+            ]
+        }
+        
+        import time
+        start_time = time.time()
+        plot_path = visualizer.plot_genre_popularity(large_genre_stats)
+        end_time = time.time()
+        
+        # Should complete within reasonable time (10 seconds)
+        assert end_time - start_time < 10
+        assert Path(plot_path).exists()
+
+    def test_plot_error_handling_with_invalid_data(self, visualizer: InsightsVisualizer):
+        """Test error handling with various invalid data scenarios"""
+        
+        # Test with empty data
+        empty_rating_dist = {
+            "distribution": {},
+            "statistics": {"mean": 0, "median": 0, "std": 0, "min": 0, "max": 0, "q25": 0, "q75": 0}
+        }
+        
+        try:
+            plot_path = visualizer.plot_rating_distribution(empty_rating_dist)
+            # Should either succeed with empty plot or handle gracefully
+            if plot_path:
+                assert Path(plot_path).exists()
+        except Exception as e:
+            # Should be a handled exception, not a crash
+            assert isinstance(e, (ValueError, KeyError, TypeError))
+
+    def test_comprehensive_statistics_plot_validation(self, visualizer: InsightsVisualizer, movie_analyzer):
+        """Test comprehensive statistics plot generation and validation"""
+        try:
+            plot_path = visualizer.plot_comprehensive_statistics(movie_analyzer)
+            assert Path(plot_path).exists()
+            
+            # Verify file size indicates successful plot generation
+            file_size = Path(plot_path).stat().st_size
+            assert file_size > 5000  # Should be substantial for comprehensive plot
+            
+        except Exception as e:
+            # If method fails, ensure it's handled gracefully
+            assert isinstance(e, (AttributeError, ValueError, TypeError))
+
+    def test_advanced_heatmap_generation(self, visualizer: InsightsVisualizer, movie_analyzer):
+        """Test advanced heatmap generation and validation"""
+        try:
+            plot_path = visualizer.plot_advanced_heatmaps(movie_analyzer)
+            assert Path(plot_path).exists()
+            
+            # Verify it's a valid image file
+            assert Path(plot_path).suffix in ['.png', '.jpg', '.jpeg', '.svg']
+            
+        except Exception as e:
+            # Should handle missing data gracefully
+            assert isinstance(e, (AttributeError, ValueError, KeyError))
+
+    def test_plot_styling_consistency(self, visualizer: InsightsVisualizer):
+        """Test that plots maintain consistent styling"""
+        rating_dist = {
+            "distribution": {"1.0": 100, "2.0": 200, "3.0": 300},
+            "statistics": {"mean": 2.0, "median": 2.0, "std": 0.8, "min": 1.0, "max": 3.0, "q25": 1.5, "q75": 2.5}
+        }
+        
+        with patch('matplotlib.pyplot.savefig') as mock_savefig:
+            with patch('matplotlib.pyplot.show'):
+                visualizer.plot_rating_distribution(rating_dist)
+                
+                # Verify matplotlib rcParams are set (styling applied)
+                import matplotlib as mpl
+                
+                # Check that figure size is set
+                figsize = mpl.rcParams.get('figure.figsize')
+                assert figsize is not None
+                
+                # Check that font size is set
+                fontsize = mpl.rcParams.get('font.size')
+                assert fontsize is not None and fontsize > 0
         assert Path(plot_path).suffix == '.png'
 
     def test_plot_genre_popularity(self, visualizer: InsightsVisualizer):

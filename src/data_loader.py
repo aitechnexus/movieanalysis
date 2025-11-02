@@ -215,3 +215,28 @@ class DataLoader:
         movies_df, _ = self.load_or_download()
         logger.info(f"  ✓ Loaded {len(movies_df)} movies")
         return movies_df
+
+    def load_ratings(self) -> pd.DataFrame:
+        """
+        Load only the ratings DataFrame from the dataset.
+        
+        This method provides a convenient way to load just the ratings data
+        without loading the movies data, which can be useful for certain
+        analysis tasks that only require rating information.
+        
+        Returns:
+            pd.DataFrame: Ratings DataFrame with columns:
+                - userId: User identifier
+                - movieId: Movie identifier
+                - rating: Rating value (0.5-5.0)
+                - timestamp: Unix timestamp
+        
+        Examples:
+            >>> loader = DataLoader(Path('data'))
+            >>> ratings_df = loader.load_ratings()
+            >>> print(f"Loaded {len(ratings_df)} ratings")
+        """
+        logger.info("Loading ratings data only...")
+        _, ratings_df = self.load_or_download()
+        logger.info(f"  ✓ Loaded {len(ratings_df)} ratings")
+        return ratings_df

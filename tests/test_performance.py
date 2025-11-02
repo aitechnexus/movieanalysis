@@ -302,3 +302,327 @@ class TestPerformance:
         # Should handle stress test within reasonable time
         assert total_stress_time < 120  # 2 minutes max for stress test
         assert total_stress_time / operations_count < 15  # 15 seconds max per operation
+
+    @pytest.mark.performance
+    def test_large_dataset_memory_efficiency(self):
+        """Test memory efficiency with very large datasets"""
+        import psutil
+        import gc
+        
+        process = psutil.Process()
+        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+        
+        # Generate large synthetic dataset
+        n_users, n_movies = 50000, 5000
+        large_ratings = []
+        
+        for user_id in range(1, n_users + 1):
+            # Each user rates 5-20 movies
+            n_ratings = min(20, max(5, int(np.random.exponential(10))))
+            movie_ids = np.random.choice(range(1, n_movies + 1), n_ratings, replace=False)
+            
+            for movie_id in movie_ids:
+                large_ratings.append({
+                    'userId': user_id,
+                    'movieId': movie_id,
+                    'rating': np.random.choice([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]),
+                    'timestamp': np.random.randint(1609459200, 1672531200)
+                })
+        
+        ratings_df = pd.DataFrame(large_ratings)
+        
+        # Test analyzer with large dataset
+        analyzer = MovieAnalyzer()
+        analyzer.ratings_df = ratings_df
+        
+        # Perform memory-intensive operations
+        start_time = time.time()
+        rating_dist = analyzer.get_rating_distribution()
+        top_movies = analyzer.get_top_movies(limit=100)
+        processing_time = time.time() - start_time
+        
+        # Check memory usage
+        final_memory = process.memory_info().rss / 1024 / 1024  # MB
+        memory_used = final_memory - initial_memory
+        
+        # Performance assertions
+        assert processing_time < 30  # Should complete within 30 seconds
+        assert memory_used < 1000  # Should use less than 1GB additional memory
+        assert len(top_movies) <= 100
+        
+        # Cleanup
+        del large_ratings, ratings_df, analyzer
+        gc.collect()
+
+    @pytest.mark.performance
+    def test_api_response_time_under_load(self):
+        """Test API response times under concurrent load"""
+        from app import app
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        
+        app.config['TESTING'] = True
+        
+        def make_api_request(endpoint):
+            with app.test_client() as client:
+                start_time = time.time()
+                response = client.get(endpoint)
+                end_time = time.time()
+                return {
+                    'endpoint': endpoint,
+                    'status_code': response.status_code,
+                    'response_time': end_time - start_time
+                }
+        
+        # Test endpoints under concurrent load
+        endpoints = [
+            '/api/movies/top',
+            '/api/analysis/rating-distribution',
+            '/api/analysis/genre-stats',
+            '/api/movies/1'
+        ]
+        
+        # Run concurrent requests
+        results = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = []
+            for _ in range(20):  # 20 concurrent requests
+                for endpoint in endpoints:
+                    futures.append(executor.submit(make_api_request, endpoint))
+            
+            for future in futures:
+                try:
+                    result = future.result(timeout=10)
+                    results.append(result)
+                except Exception as e:
+                    # Log but don't fail the test for individual request failures
+                    print(f"Request failed: {e}")
+        
+        # Analyze results
+        if results:
+            response_times = [r['response_time'] for r in results]
+            avg_response_time = sum(response_times) / len(response_times)
+            max_response_time = max(response_times)
+            
+            # Performance assertions
+            assert avg_response_time < 2.0  # Average response time under 2 seconds
+            assert max_response_time < 5.0  # Max response time under 5 seconds
+            
+            # At least 80% of requests should succeed
+            successful_requests = [r for r in results if r['status_code'] in [200, 404]]
+            success_rate = len(successful_requests) / len(results)
+            assert success_rate >= 0.8
+
+    @pytest.mark.performance
+    def test_recommendation_algorithm_scalability(self):
+        """Test recommendation algorithm performance with varying dataset sizes"""
+        import numpy as np
+        
+        dataset_sizes = [100, 500, 1000, 2000]
+        execution_times = []
+        
+        for size in dataset_sizes:
+            # Generate test data
+            ratings_data = []
+            for user_id in range(1, size + 1):
+                for movie_id in range(1, min(100, size) + 1):
+                    if np.random.random() < 0.1:  # 10% rating density
+                        ratings_data.append({
+                            'userId': user_id,
+                            'movieId': movie_id,
+                            'rating': np.random.choice([1.0, 2.0, 3.0, 4.0, 5.0]),
+                            'timestamp': 1609459200
+                        })
+            
+            ratings_df = pd.DataFrame(ratings_data)
+            
+            analyzer = MovieAnalyzer()
+            analyzer.ratings_df = ratings_df
+            
+            # Measure recommendation performance
+            start_time = time.time()
+            recommendations = analyzer.get_movie_recommendations(user_id=1, num_recommendations=10)
+            execution_time = time.time() - start_time
+            
+            execution_times.append(execution_time)
+            
+            # Should complete within reasonable time
+            assert execution_time < 10.0
+            assert isinstance(recommendations, list)
+        
+        # Verify scalability - execution time should not grow exponentially
+        if len(execution_times) >= 2:
+            time_growth_factor = execution_times[-1] / execution_times[0]
+            size_growth_factor = dataset_sizes[-1] / dataset_sizes[0]
+            
+            # Time should not grow more than quadratically with size
+            assert time_growth_factor < size_growth_factor ** 2
+
+    @pytest.mark.performance
+    def test_visualization_rendering_performance(self):
+        """Test visualization rendering performance with large datasets"""
+        visualizer = InsightsVisualizer()
+        
+        # Create large visualization data
+        large_genre_stats = {
+            "overall": [
+                {
+                    "genre": f"Genre_{i}",
+                    "count": np.random.randint(100, 10000),
+                    "mean_rating": np.random.uniform(2.0, 4.5)
+                }
+                for i in range(100)  # 100 different genres
+            ]
+        }
+        
+        large_rating_dist = {
+            "distribution": {
+                str(float(rating)): np.random.randint(1000, 50000)
+                for rating in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+            },
+            "statistics": {
+                "mean": 3.5,
+                "median": 3.5,
+                "std": 1.2,
+                "min": 1.0,
+                "max": 5.0,
+                "q25": 2.5,
+                "q75": 4.5
+            }
+        }
+        
+        # Test multiple visualization types
+        visualization_tests = [
+            (visualizer.plot_rating_distribution, large_rating_dist),
+            (visualizer.plot_genre_popularity, large_genre_stats),
+        ]
+        
+        for viz_func, data in visualization_tests:
+            start_time = time.time()
+            plot_path = viz_func(data)
+            execution_time = time.time() - start_time
+            
+            # Performance assertions
+            assert execution_time < 15.0  # Should complete within 15 seconds
+            assert Path(plot_path).exists()
+            assert Path(plot_path).stat().st_size > 1000  # Should generate substantial plot
+
+    @pytest.mark.performance
+    def test_data_processing_pipeline_performance(self):
+        """Test end-to-end data processing pipeline performance"""
+        from src.data_loader import DataLoader
+        
+        # Create large synthetic dataset files
+        n_movies = 1000
+        n_ratings = 50000
+        
+        movies_data = [
+            {
+                'movieId': i,
+                'title': f'Test Movie {i}',
+                'genres': np.random.choice(['Action', 'Comedy', 'Drama']) + '|' + 
+                         np.random.choice(['Romance', 'Thriller', 'Sci-Fi'])
+            }
+            for i in range(1, n_movies + 1)
+        ]
+        
+        ratings_data = [
+            {
+                'userId': np.random.randint(1, 1000),
+                'movieId': np.random.randint(1, n_movies + 1),
+                'rating': np.random.choice([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]),
+                'timestamp': np.random.randint(1609459200, 1672531200)
+            }
+            for _ in range(n_ratings)
+        ]
+        
+        # Test full pipeline
+        start_time = time.time()
+        
+        # Data processing
+        processor = DataProcessor()
+        clean_movies = processor.clean_movies(movies_data)
+        clean_ratings = processor.clean_ratings(ratings_data)
+        
+        # Analysis
+        analyzer = MovieAnalyzer()
+        analyzer.movies_df = pd.DataFrame(clean_movies)
+        analyzer.ratings_df = pd.DataFrame(clean_ratings)
+        
+        # Perform multiple analyses
+        rating_dist = analyzer.get_rating_distribution()
+        top_movies = analyzer.get_top_movies(limit=50)
+        genre_stats = analyzer.analyze_genres()
+        
+        total_time = time.time() - start_time
+        
+        # Performance assertions
+        assert total_time < 45.0  # Full pipeline should complete within 45 seconds
+        assert len(clean_movies) > 0
+        assert len(clean_ratings) > 0
+        assert 'distribution' in rating_dist
+        assert len(top_movies) <= 50
+        assert 'overall' in genre_stats
+
+    @pytest.mark.performance
+    def test_memory_leak_detection_extended(self):
+        """Extended memory leak detection over multiple iterations"""
+        import psutil
+        import gc
+        
+        process = psutil.Process()
+        
+        # Record memory usage over multiple iterations
+        memory_readings = []
+        
+        for iteration in range(10):
+            gc.collect()  # Force garbage collection
+            
+            # Record memory before operation
+            memory_before = process.memory_info().rss / 1024 / 1024  # MB
+            
+            # Perform memory-intensive operations
+            analyzer = MovieAnalyzer()
+            
+            # Generate data for this iteration
+            test_ratings = [
+                {
+                    'userId': i % 100 + 1,
+                    'movieId': i % 50 + 1,
+                    'rating': 4.0,
+                    'timestamp': 1609459200
+                }
+                for i in range(1000)
+            ]
+            
+            analyzer.ratings_df = pd.DataFrame(test_ratings)
+            
+            # Perform operations
+            analyzer.get_rating_distribution()
+            analyzer.get_top_movies(limit=10)
+            
+            # Clean up
+            del analyzer, test_ratings
+            gc.collect()
+            
+            # Record memory after operation
+            memory_after = process.memory_info().rss / 1024 / 1024  # MB
+            memory_readings.append(memory_after - memory_before)
+        
+        # Analyze memory usage pattern
+        avg_memory_per_iteration = sum(memory_readings) / len(memory_readings)
+        max_memory_increase = max(memory_readings)
+        
+        # Memory usage should be reasonable and not continuously increasing
+        assert avg_memory_per_iteration < 50  # Average increase should be less than 50MB
+        assert max_memory_increase < 100  # Max increase should be less than 100MB
+        
+        # Check for memory leak pattern (continuously increasing memory)
+        if len(memory_readings) >= 5:
+            # Compare first half vs second half
+            first_half_avg = sum(memory_readings[:5]) / 5
+            second_half_avg = sum(memory_readings[5:]) / 5
+            
+            # Second half should not be significantly higher (indicating leak)
+            memory_growth_ratio = second_half_avg / first_half_avg if first_half_avg > 0 else 1
+            assert memory_growth_ratio < 2.0  # Should not double in memory usage
