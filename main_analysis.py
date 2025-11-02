@@ -1,6 +1,32 @@
 
-# main_analysis.py
-"""MovieLens Data Analysis - Complete Pure Python Implementation"""
+#!/usr/bin/env python3
+"""
+MovieLens Data Analysis Pipeline - Complete Pure Python Implementation
+
+This module provides a comprehensive analysis pipeline for MovieLens datasets,
+implementing data loading, processing, statistical analysis, and visualization
+in a production-ready framework.
+
+Features:
+- Automated data loading from multiple sources (GroupLens, Hugging Face)
+- Robust data cleaning and preprocessing
+- Advanced statistical analysis and movie recommendations
+- Publication-ready visualizations and reports
+- Comprehensive performance monitoring and caching
+
+Usage:
+    Command line execution:
+    $ python main_analysis.py
+    
+    Programmatic usage:
+    >>> from main_analysis import MovieLensAnalysisPipeline
+    >>> pipeline = MovieLensAnalysisPipeline(data_source="grouplens", dataset="ml-25m")
+    >>> results = pipeline.run_full_analysis()
+
+Author: MovieLens Analysis Team
+Version: 2.0.0
+License: MIT
+"""
 import os, sys, logging
 from pathlib import Path
 from datetime import datetime
@@ -19,7 +45,67 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 class MovieLensAnalysisPipeline:
+    """
+    Complete analysis pipeline for MovieLens datasets with automated processing.
+    
+    This class orchestrates the entire analysis workflow from data loading through
+    visualization generation and report creation. It provides a high-level interface
+    for running comprehensive MovieLens analysis with minimal configuration.
+    
+    The pipeline includes:
+    - Automated data loading and validation
+    - Data cleaning and preprocessing
+    - Statistical analysis and insights generation
+    - Visualization creation and export
+    - Comprehensive report generation
+    - Performance monitoring and caching
+    
+    Attributes:
+        data_source (str): Data source identifier ('grouplens' or 'huggingface')
+        dataset (str): Dataset identifier (e.g., 'ml-25m', 'ml-100k')
+        project_root (Path): Root directory of the project
+        data_dir (Path): Directory for data storage
+        output_dir (Path): Directory for analysis outputs
+        
+    Examples:
+        Basic usage:
+        >>> pipeline = MovieLensAnalysisPipeline()
+        >>> results = pipeline.run_full_analysis()
+        
+        Custom configuration:
+        >>> pipeline = MovieLensAnalysisPipeline(
+        ...     data_source="huggingface",
+        ...     dataset="ml-100k"
+        ... )
+        >>> results = pipeline.run_full_analysis()
+        
+        Access results:
+        >>> print(f"Top movie: {results['top_movies'][0]['title']}")
+        >>> print(f"Analysis completed in: {results['execution_time']}")
+    """
+    
     def __init__(self, data_source: str = "grouplens", dataset: str = "ml-25m"):
+        """
+        Initialize the analysis pipeline with configuration parameters.
+        
+        Args:
+            data_source (str): Data source ('grouplens' or 'huggingface')
+            dataset (str): Dataset identifier (default: 'ml-25m')
+            
+        Raises:
+            ValueError: If data_source is not supported
+            OSError: If unable to create required directories
+            
+        Examples:
+            >>> # Use default GroupLens ml-25m dataset
+            >>> pipeline = MovieLensAnalysisPipeline()
+            >>> 
+            >>> # Use smaller dataset for testing
+            >>> pipeline = MovieLensAnalysisPipeline(dataset="ml-100k")
+            >>> 
+            >>> # Use Hugging Face as data source
+            >>> pipeline = MovieLensAnalysisPipeline(data_source="huggingface")
+        """
         self.data_source, self.dataset = data_source, dataset
         self.project_root = Path(__file__).parent
         self.data_dir = self.project_root / "data"

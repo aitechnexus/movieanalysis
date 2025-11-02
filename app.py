@@ -7,18 +7,21 @@ Serves analysis data with proper CORS and JSON endpoints
 import json
 import logging
 import os
+import shutil
 import tempfile
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import requests
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 from src.analyzer import MovieAnalyzer
 from src.data_loader import DataLoader
 from src.data_processor import DataProcessor
-from src.report_generator import ReportGenerator
 from src.visualizer import InsightsVisualizer
 
 # Configure logging
@@ -28,33 +31,45 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Cache configuration
+# Configuration
 CACHE_DURATION = 3600  # 1 hour in seconds
 CACHE_FILE = Path("data/cache/analysis_cache.json")
 CACHE_TIMESTAMP_FILE = Path("data/cache/cache_timestamp.txt")
 VISUALIZATION_CACHE_DIR = Path("data/cache/visualizations")
 
+# Performance optimization: Global data cache to avoid reloading
+_global_data_cache = {
+    'movies_df': None,
+    'ratings_df': None,
+    'analyzer': None,
+    'last_loaded': None
+}
+
+# Memory optimization: Chunk size for large operations
+CHUNK_SIZE = 10000
+
+
 def cache_visualization(cache_key):
     """Decorator to cache expensive visualization operations"""
     def decorator(func):
         from functools import wraps
-        
+
         @wraps(func)  # This preserves the original function's metadata
         def wrapper(*args, **kwargs):
             # Ensure cache directory exists
             VISUALIZATION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            
+
             cache_file = VISUALIZATION_CACHE_DIR / f"{cache_key}.json"
             timestamp_file = VISUALIZATION_CACHE_DIR / f"{cache_key}_timestamp.txt"
-            
+
             current_time = datetime.now().timestamp()
-            
+
             # Check if cached result exists and is still valid
             if cache_file.exists() and timestamp_file.exists():
                 try:
                     with open(timestamp_file, 'r') as f:
                         cached_timestamp = float(f.read().strip())
-                    
+
                     if current_time - cached_timestamp < CACHE_DURATION:
                         with open(cache_file, 'r') as f:
                             cached_result = json.load(f)
@@ -62,11 +77,11 @@ def cache_visualization(cache_key):
                         return jsonify(cached_result)
                 except (ValueError, FileNotFoundError, json.JSONDecodeError):
                     pass  # Cache invalid, proceed with fresh computation
-            
+
             # Generate fresh result
             logger.info(f"Generating fresh result for {cache_key}")
             result = func(*args, **kwargs)
-            
+
             # Cache the result if it's successful
             if hasattr(result, 'get_json') and result.status_code == 200:
                 try:
@@ -77,23 +92,36 @@ def cache_visualization(cache_key):
                         f.write(str(current_time))
                 except Exception as e:
                     logger.warning(f"Failed to cache result for {cache_key}: {e}")
-            
+
             return result
         return wrapper
     return decorator
 
 
+def clear_global_cache():
+    """Clear the global data cache to force fresh data loading"""
+    global _global_data_cache
+    _global_data_cache = {
+        'movies_df': None,
+        'ratings_df': None,
+        'analyzer': None,
+        'last_loaded': None
+    }
+    logger.info("Global data cache cleared")
+
+
 def get_analysis_data():
-    """Get or refresh cached analysis data"""
+    """Get or refresh cached analysis data with performance optimizations"""
     current_time = datetime.now().timestamp()
-    
+    global _global_data_cache
+
     # Ensure cache directory exists
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Load cached data if it exists
     cached_analysis = None
     cached_timestamp = None
-    
+
     if CACHE_FILE.exists() and CACHE_TIMESTAMP_FILE.exists():
         try:
             with open(CACHE_FILE, 'r') as f:
@@ -115,18 +143,38 @@ def get_analysis_data():
         logger.info("Refreshing analysis cache...")
 
         try:
-            # Load and process data
-            loader = DataLoader(
-                data_dir=Path("data"), source="grouplens", dataset="ml-latest-small"
-            )
-            movies_df, ratings_df = loader.load_or_download()
+            # Performance optimization: Check if data is already loaded in memory
+            if (_global_data_cache['last_loaded'] is None or
+                    current_time - _global_data_cache['last_loaded'] > CACHE_DURATION):
 
-            processor = DataProcessor()
-            movies_df = processor.clean_movies(movies_df)
-            ratings_df = processor.clean_ratings(ratings_df)
+                logger.info("Loading fresh data from disk...")
+                # Load and process data
+                loader = DataLoader(
+                    data_dir=Path("data"), source="grouplens", dataset="ml-latest-small"
+                )
+                movies_df, ratings_df = loader.load_or_download()
 
-            # Perform analysis
-            analyzer = MovieAnalyzer(movies_df, ratings_df)
+                processor = DataProcessor()
+                movies_df = processor.clean_movies(movies_df)
+                ratings_df = processor.clean_ratings(ratings_df)
+
+                # Cache in memory for subsequent requests
+                _global_data_cache['movies_df'] = movies_df
+                _global_data_cache['ratings_df'] = ratings_df
+                _global_data_cache['last_loaded'] = current_time
+
+                logger.info(f"Data loaded: {len(movies_df)} movies, {len(ratings_df)} ratings")
+            else:
+                logger.info("Using cached data from memory...")
+                movies_df = _global_data_cache['movies_df']
+                ratings_df = _global_data_cache['ratings_df']
+
+            # Create or reuse analyzer
+            if _global_data_cache['analyzer'] is None:
+                analyzer = MovieAnalyzer(movies_df, ratings_df)
+                _global_data_cache['analyzer'] = analyzer
+            else:
+                analyzer = _global_data_cache['analyzer']
 
             # Get all analysis results
             logger.info("Getting top movies...")
@@ -140,7 +188,7 @@ def get_analysis_data():
             logger.info("Getting user stats...")
             user_stats = analyzer.get_user_behavior_stats()
             logger.info("All basic analysis completed, starting comprehensive stats...")
-            
+
             # Generate comprehensive statistics
             try:
                 visualizer = InsightsVisualizer(output_dir=Path("outputs/plots"))
@@ -148,8 +196,8 @@ def get_analysis_data():
             except Exception as e:
                 logger.error(f"Failed to generate comprehensive statistics plot: {e}")
                 plot_path = "outputs/plots/comprehensive_statistics.png"  # fallback
-            
-            # Calculate detailed statistics for comprehensive analysis
+
+            # Calculate detailed statistics for comprehensive analysis (optimized)
             ratings_stats = {
                 "mean": float(ratings_df["rating"].mean()),
                 "median": float(ratings_df["rating"].median()),
@@ -162,17 +210,34 @@ def get_analysis_data():
                 "kurtosis": float(ratings_df["rating"].kurtosis()),
             }
 
-            # Movie-level statistics
-            movie_stats = (
-                ratings_df.groupby("movieId")
-                .agg(
-                    count=("rating", "count"),
-                    mean=("rating", "mean"),
-                    std=("rating", "std"),
-                    median=("rating", "median"),
+            # Movie-level statistics (memory optimized with chunking for large datasets)
+            logger.info("Computing movie-level statistics...")
+            if len(ratings_df) > CHUNK_SIZE * 10:  # Only chunk for very large datasets
+                movie_stats_list = []
+                for chunk in pd.read_csv(ratings_df, chunksize=CHUNK_SIZE):
+                    chunk_stats = (
+                        chunk.groupby("movieId")
+                        .agg(
+                            count=("rating", "count"),
+                            mean=("rating", "mean"),
+                            std=("rating", "std"),
+                            median=("rating", "median"),
+                        )
+                        .reset_index()
+                    )
+                    movie_stats_list.append(chunk_stats)
+                movie_stats = pd.concat(movie_stats_list, ignore_index=True)
+            else:
+                movie_stats = (
+                    ratings_df.groupby("movieId")
+                    .agg(
+                        count=("rating", "count"),
+                        mean=("rating", "mean"),
+                        std=("rating", "std"),
+                        median=("rating", "median"),
+                    )
+                    .reset_index()
                 )
-                .reset_index()
-            )
 
             movie_stats_summary = {
                 "total_movies": len(movie_stats),
@@ -213,7 +278,7 @@ def get_analysis_data():
                 "user_stats": user_stats,
                 "comprehensive_statistics": comprehensive_stats,
             }
-            
+
             # Save cache to files
             try:
                 with open(CACHE_FILE, 'w') as f:
@@ -223,7 +288,7 @@ def get_analysis_data():
                 logger.info("Analysis cache refreshed and saved successfully")
             except Exception as e:
                 logger.error(f"Failed to save cache: {e}")
-            
+
             cached_timestamp = current_time
 
         except Exception as e:
@@ -234,7 +299,7 @@ def get_analysis_data():
                     "error": "Failed to load analysis data",
                     "metadata": {"dataset": "ml-1m", "error": str(e)},
                 }
-            
+
             # Try to save error state to cache files
             try:
                 with open(CACHE_FILE, 'w') as f:
@@ -707,21 +772,37 @@ def api_statistical_summary():
 
 @app.route("/api/refresh")
 def api_refresh():
-    """Force refresh of analysis cache"""
-    # Clear cache files to force refresh
+    """Force refresh of analysis cache with performance optimizations"""
+    # Clear both file cache and memory cache
     try:
+        # Clear file cache
         if CACHE_FILE.exists():
             CACHE_FILE.unlink()
         if CACHE_TIMESTAMP_FILE.exists():
             CACHE_TIMESTAMP_FILE.unlink()
-        logger.info("Cache files cleared")
+
+        # Clear visualization cache
+        if VISUALIZATION_CACHE_DIR.exists():
+            for cache_file in VISUALIZATION_CACHE_DIR.glob("*.json"):
+                cache_file.unlink()
+            for timestamp_file in VISUALIZATION_CACHE_DIR.glob("*_timestamp.txt"):
+                timestamp_file.unlink()
+
+        # Clear global memory cache
+        clear_global_cache()
+
+        logger.info("All caches cleared successfully")
     except Exception as e:
-        logger.error(f"Failed to clear cache files: {e}")
+        logger.error(f"Failed to clear caches: {e}")
 
     # Trigger refresh
     get_analysis_data()
 
-    return jsonify({"status": "success", "message": "Analysis data refreshed"})
+    return jsonify({
+        "status": "success",
+        "message": "Analysis data and all caches refreshed",
+        "timestamp": datetime.now().isoformat()
+    })
 
 
 @app.route("/api/status")

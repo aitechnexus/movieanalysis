@@ -16,10 +16,7 @@ class ReportGenerator:
         logger.info("  → Generating HTML report...")
         md = analysis_results["metadata"]
         top = analysis_results["top_movies"]
-        genre_stats = analysis_results["genre_stats"]
-        ts = analysis_results["time_series"]
         rdist = analysis_results["rating_dist"]
-        user = analysis_results["user_stats"]
         plots = analysis_results["plots"]
 
         def enc(p):
@@ -104,7 +101,7 @@ class ReportGenerator:
             story.append(table)
             doc.build(story)
             return pdf_path
-        except Exception as e:
+        except Exception:
             t = self.output_dir / "pdf_generation_skipped.txt"
             t.write_text(
                 "Install reportlab to enable PDF output: pip install reportlab"
