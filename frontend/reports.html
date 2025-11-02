@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieLens Analysis - Reports</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dataset-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .reports-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .reports-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .reports-title {
+            color: #1f2937;
+            font-size: 2.5rem;
+            margin: 0;
+        }
+        
+        .reports-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .action-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .action-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
+        
+        .action-btn.secondary {
+            background: #10b981;
+        }
+        
+        .action-btn.secondary:hover {
+            background: #059669;
+        }
+        
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .report-card {
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-color: #6366f1;
+        }
+        
+        .report-card.active {
+            border-color: #6366f1;
+            background: #eff6ff;
+        }
+        
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .report-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .report-date {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        
+        .report-description {
+            color: #4b5563;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .report-stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+        
+        .report-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .report-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex: 1;
+        }
+        
+        .report-btn:hover {
+            background: #4f46e5;
+        }
+        
+        .report-btn.download {
+            background: #10b981;
+        }
+        
+        .report-btn.download:hover {
+            background: #059669;
+        }
+        
+        .report-viewer {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+            min-height: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .report-viewer.hidden {
+            display: none;
+        }
+        
+        .viewer-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .viewer-title {
+            font-size: 1.5rem;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .close-viewer {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        
+        .close-viewer:hover {
+            background: #dc2626;
+        }
+        
+        .report-content {
+            line-height: 1.7;
+            color: #374151;
+        }
+        
+        .report-content h1, .report-content h2, .report-content h3 {
+            color: #1f2937;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .report-content h1 {
+            font-size: 2rem;
+            border-bottom: 2px solid #6366f1;
+            padding-bottom: 0.5rem;
+        }
+        
+        .report-content h2 {
+            font-size: 1.5rem;
+            color: #374151;
+        }
+        
+        .report-content h3 {
+            font-size: 1.25rem;
+            color: #4b5563;
+        }
+        
+        .report-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        .report-content th, .report-content td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        .report-content th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .report-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #6b7280;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .no-reports {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+        
+        .no-reports i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #d1d5db;
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .filter-select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            color: #374151;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1><i class="fas fa-file-alt"></i> MovieLens Analysis Reports</h1>
+            </div>
+            <div class="header-right">
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="showDatasetPage()">
+                        <i class="fas fa-database"></i> Dataset
+                    </button>
+                    <button class="nav-btn" onclick="showDashboard()">
+                        <i class="fas fa-chart-bar"></i> Dashboard
+                    </button>
+                    <button class="nav-btn" onclick="showTrends()">
+                        <i class="fas fa-trending-up"></i> Trends
+                    </button>
+                    <button class="nav-btn" onclick="showDocumentation()">
+                        <i class="fas fa-book"></i> Documentation
+                    </button>
+                    <button class="nav-btn active" onclick="showReports()">
+                        <i class="fas fa-file-alt"></i> Reports
+                    </button>
+                </div>
+                <div class="api-status">
+                    <div class="status-indicator" id="apiStatus"></div>
+                    <span id="apiStatusText">Connecting...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="reports-container">
+            <!-- Reports Header -->
+            <div class="reports-header">
+                <h1 class="reports-title">Analysis Reports</h1>
+                <div class="reports-actions">
+                    <button class="action-btn" onclick="generateNewReport()">
+                        <i class="fas fa-plus"></i> Generate New Report
+                    </button>
+                    <button class="action-btn secondary" onclick="refreshReports()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <select class="filter-select" id="reportTypeFilter" onchange="filterReports()">
+                    <option value="">All Report Types</option>
+                    <option value="analysis">Analysis Reports</option>
+                    <option value="summary">Summary Reports</option>
+                    <option value="export">Data Exports</option>
+                </select>
+                <select class="filter-select" id="dateFilter" onchange="filterReports()">
+                    <option value="">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search reports..." onkeyup="filterReports()">
+            </div>
+
+            <!-- Reports Grid -->
+            <div class="reports-grid" id="reportsGrid">
+                <!-- Reports will be loaded here -->
+            </div>
+
+            <!-- Report Viewer -->
+            <div class="report-viewer hidden" id="reportViewer">
+                <div class="viewer-header">
+                    <h2 class="viewer-title" id="viewerTitle">Report Title</h2>
+                    <button class="close-viewer" onclick="closeReportViewer()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+                <div class="report-content" id="reportContent">
+                    <!-- Report content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 MovieLens Analysis Platform. Generated Reports & Analysis Exports</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        let allReports = [];
+        let currentReport = null;
+
+        // Navigation functions
+        function showDatasetPage() {
+            window.location.href = 'dataset.html';
+        }
+
+        function showDashboard() {
+            window.location.href = 'index.html';
+        }
+
+        function showDocumentation() {
+            window.location.href = 'documentation.html';
+        }
+
+        function showReports() {
+            // Already on reports page
+            console.log('Already on reports page');
+        }
+
+        // API status check
+        async function checkApiStatus() {
+            try {
+                const apiUrl = '/api/status';
+                const response = await fetch(apiUrl);
+                if (response.ok) {
+                    document.getElementById('apiStatus').className = 'status-indicator online';
+                    document.getElementById('apiStatusText').textContent = 'API Online';
+                } else {
+                    document.getElementById('apiStatus').className = 'status-indicator offline';
+                    document.getElementById('apiStatusText').textContent = 'API Offline';
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').className = 'status-indicator offline';
+                document.getElementById('apiStatusText').textContent = 'API Offline';
+            }
+        }
+
+        // Load available reports
+        async function loadReports() {
+            const reportsGrid = document.getElementById('reportsGrid');
+            reportsGrid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div>Loading reports...</div>';
+
+            try {
+                // Check for generated reports in outputs directory
+                const reports = await getAvailableReports();
+                allReports = reports;
+                displayReports(reports);
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                reportsGrid.innerHTML = `
+                    <div class="no-reports">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Error Loading Reports</h3>
+                        <p>Unable to load reports. Please check the API connection.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Get available reports (mock data for now, would connect to API)
+        async function getAvailableReports() {
+            // This would typically fetch from an API endpoint
+            // For now, we'll return mock data representing typical reports
+            return [
+                {
+                    id: 'analysis_' + Date.now(),
+                    title: 'MovieLens Dataset Analysis Report',
+                    type: 'analysis',
+                    date: new Date().toISOString().split('T')[0],
+                    description: 'Comprehensive analysis of the MovieLens dataset including rating distributions, top movies, genre trends, and user behavior patterns.',
+                    stats: {
+                        pages: 15,
+                        charts: 8,
+                        tables: 12
+                    },
+                    file: 'movielens_analysis_report.html',
+                    size: '2.3 MB'
+                },
+                {
+                    id: 'summary_' + Date.now(),
+                    title: 'Executive Summary Report',
+                    type: 'summary',
+                    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+                    description: 'High-level summary of key findings and insights from the MovieLens dataset analysis.',
+                    stats: {
+                        pages: 5,
+                        charts: 3,
+                        tables: 4
+                    },
+                    file: 'executive_summary.pdf',
+                    size: '1.1 MB'
+                },
+                {
+                    id: 'export_' + Date.now(),
+                    title: 'Data Export Package',
+                    type: 'export',
+                    date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
+                    description: 'Complete data export including processed datasets, visualizations, and statistical summaries in multiple formats.',
+                    stats: {
+                        files: 25,
+                        formats: 4,
+                        size: '15.7 MB'
+                    },
+                    file: 'data_export_package.zip',
+                    size: '15.7 MB'
+                }
+            ];
+        }
+
+        // Display reports in grid
+        function displayReports(reports) {
+            const reportsGrid = document.getElementById('reportsGrid');
+            
+            if (reports.length === 0) {
+                reportsGrid.innerHTML = `
+                    <div class="no-reports">
+                        <i class="fas fa-file-alt"></i>
+                        <h3>No Reports Available</h3>
+                        <p>Generate your first report to get started with analysis insights.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            reportsGrid.innerHTML = reports.map(report => `
+                <div class="report-card" onclick="selectReport('${report.id}')">
+                    <div class="report-header">
+                        <h3 class="report-title">${report.title}</h3>
+                        <span class="report-date">${formatDate(report.date)}</span>
+                    </div>
+                    <p class="report-description">${report.description}</p>
+                    <div class="report-stats">
+                        ${Object.entries(report.stats).map(([key, value]) => 
+                            `<span class="stat-item">${value} ${key}</span>`
+                        ).join('')}
+                        <span class="stat-item">${report.size}</span>
+                    </div>
+                    <div class="report-actions">
+                        <button class="report-btn" onclick="event.stopPropagation(); viewReport('${report.id}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button class="report-btn download" onclick="event.stopPropagation(); downloadReport('${report.id}')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Format date for display
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Select report
+        function selectReport(reportId) {
+            // Remove active class from all cards
+            document.querySelectorAll('.report-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Add active class to selected card
+            event.currentTarget.classList.add('active');
+            currentReport = allReports.find(r => r.id === reportId);
+        }
+
+        // View report in viewer
+        async function viewReport(reportId) {
+            const report = allReports.find(r => r.id === reportId);
+            if (!report) return;
+
+            const viewer = document.getElementById('reportViewer');
+            const title = document.getElementById('viewerTitle');
+            const content = document.getElementById('reportContent');
+
+            title.textContent = report.title;
+            content.innerHTML = '<div class="loading-spinner"><div class="spinner"></div>Loading report content...</div>';
+            
+            viewer.classList.remove('hidden');
+            viewer.scrollIntoView({ behavior: 'smooth' });
+
+            try {
+                // Load report content (would fetch from actual file)
+                const reportContent = await loadReportContent(report);
+                content.innerHTML = reportContent;
+            } catch (error) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <h3>Error Loading Report</h3>
+                        <p>Unable to load report content. The file may not be available.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load report content (mock implementation)
+        async function loadReportContent(report) {
+            // Simulate loading delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Return mock HTML content based on report type
+            if (report.type === 'analysis') {
+                return `
+                    <h1>MovieLens Dataset Analysis Report</h1>
+                    <p><strong>Generated:</strong> ${formatDate(report.date)}</p>
+                    
+                    <h2>Executive Summary</h2>
+                    <p>This comprehensive analysis examines the MovieLens dataset, providing insights into user rating patterns, movie popularity trends, and genre preferences. The dataset contains over 1 million ratings from 6,000 users on 4,000 movies.</p>
+                    
+                    <h2>Dataset Overview</h2>
+                    <table>
+                        <tr><th>Metric</th><th>Value</th></tr>
+                        <tr><td>Total Ratings</td><td>1,000,209</td></tr>
+                        <tr><td>Unique Users</td><td>6,040</td></tr>
+                        <tr><td>Unique Movies</td><td>3,706</td></tr>
+                        <tr><td>Date Range</td><td>1995-2003</td></tr>
+                        <tr><td>Average Rating</td><td>3.52</td></tr>
+                    </table>
+                    
+                    <h2>Key Findings</h2>
+                    <h3>Rating Distribution</h3>
+                    <p>The most common rating is 4.0 stars, representing 26.8% of all ratings. The distribution shows a slight positive skew, indicating users tend to rate movies they enjoy.</p>
+                    
+                    <h3>Top Rated Movies</h3>
+                    <p>Movies with the highest average ratings (minimum 100 ratings) include classic films and critically acclaimed productions. Genre analysis reveals drama and comedy as the most popular categories.</p>
+                    
+                    <h3>User Behavior Patterns</h3>
+                    <p>Analysis of user rating patterns shows distinct segments: casual viewers (1-20 ratings), regular users (21-100 ratings), and power users (100+ ratings). Power users represent 15% of the user base but contribute 45% of all ratings.</p>
+                    
+                    <h2>Recommendations</h2>
+                    <ul>
+                        <li>Focus recommendation algorithms on highly-rated movies within preferred genres</li>
+                        <li>Implement user segmentation for personalized experiences</li>
+                        <li>Consider temporal trends when suggesting new releases</li>
+                        <li>Leverage power user preferences for cold-start problems</li>
+                    </ul>
+                `;
+            } else if (report.type === 'summary') {
+                return `
+                    <h1>Executive Summary</h1>
+                    <p><strong>Report Date:</strong> ${formatDate(report.date)}</p>
+                    
+                    <h2>Overview</h2>
+                    <p>This executive summary presents the key findings from our comprehensive MovieLens dataset analysis, highlighting critical insights for business decision-making.</p>
+                    
+                    <h2>Key Metrics</h2>
+                    <table>
+                        <tr><th>Metric</th><th>Value</th><th>Insight</th></tr>
+                        <tr><td>User Engagement</td><td>High</td><td>Average 165 ratings per user</td></tr>
+                        <tr><td>Content Diversity</td><td>Excellent</td><td>18 distinct genres represented</td></tr>
+                        <tr><td>Rating Quality</td><td>Reliable</td><td>Low variance in repeat ratings</td></tr>
+                    </table>
+                    
+                    <h2>Strategic Recommendations</h2>
+                    <ol>
+                        <li><strong>Enhance Personalization:</strong> Implement advanced recommendation algorithms based on user segmentation analysis</li>
+                        <li><strong>Content Acquisition:</strong> Focus on drama and comedy genres which show highest engagement</li>
+                        <li><strong>User Retention:</strong> Develop strategies to convert casual viewers to regular users</li>
+                    </ol>
+                `;
+            } else {
+                return `
+                    <h1>Data Export Package</h1>
+                    <p><strong>Export Date:</strong> ${formatDate(report.date)}</p>
+                    
+                    <h2>Package Contents</h2>
+                    <p>This export package contains processed data files, visualizations, and analysis results in multiple formats for further analysis and integration.</p>
+                    
+                    <h2>Included Files</h2>
+                    <table>
+                        <tr><th>File Type</th><th>Count</th><th>Description</th></tr>
+                        <tr><td>CSV Data Files</td><td>8</td><td>Cleaned and processed datasets</td></tr>
+                        <tr><td>JSON Exports</td><td>5</td><td>API-ready data structures</td></tr>
+                        <tr><td>PNG Charts</td><td>12</td><td>High-resolution visualizations</td></tr>
+                        <tr><td>Statistical Reports</td><td>3</td><td>Detailed analysis summaries</td></tr>
+                    </table>
+                    
+                    <h2>Usage Instructions</h2>
+                    <p>Extract the package and refer to the included README.txt file for detailed information about each file and its intended use case.</p>
+                `;
+            }
+        }
+
+        // Close report viewer
+        function closeReportViewer() {
+            document.getElementById('reportViewer').classList.add('hidden');
+        }
+
+        // Download report
+        function downloadReport(reportId) {
+            const report = allReports.find(r => r.id === reportId);
+            if (!report) return;
+
+            // In a real implementation, this would trigger a file download
+            alert(`Downloading ${report.title}\nFile: ${report.file}\nSize: ${report.size}`);
+        }
+
+        // Generate new report
+        async function generateNewReport() {
+            try {
+                const apiUrl = '/api/generate-report';
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Report generation started. It will appear in the list when complete.');
+                    refreshReports();
+                } else {
+                    alert('Failed to start report generation. Please check the API connection.');
+                }
+            } catch (error) {
+                alert('Error generating report. Please try again.');
+            }
+        }
+
+        // Refresh reports list
+        function refreshReports() {
+            loadReports();
+        }
+
+        // Filter reports
+        function filterReports() {
+            const typeFilter = document.getElementById('reportTypeFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            let filteredReports = allReports.filter(report => {
+                // Type filter
+                if (typeFilter && report.type !== typeFilter) return false;
+                
+                // Date filter
+                if (dateFilter) {
+                    const reportDate = new Date(report.date);
+                    const now = new Date();
+                    
+                    switch (dateFilter) {
+                        case 'today':
+                            if (reportDate.toDateString() !== now.toDateString()) return false;
+                            break;
+                        case 'week':
+                            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            if (reportDate < weekAgo) return false;
+                            break;
+                        case 'month':
+                            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            if (reportDate < monthAgo) return false;
+                            break;
+                    }
+                }
+                
+                // Search filter
+                if (searchTerm && !report.title.toLowerCase().includes(searchTerm) && 
+                    !report.description.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+                
+                return true;
+            });
+
+            displayReports(filteredReports);
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            checkApiStatus();
+            loadReports();
+            setInterval(checkApiStatus, 30000); // Check every 30 seconds
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+data/raw/*
+data/processed/*
+!data/**/.gitkeep
+outputs/plots/*
+outputs/reports/*
+outputs/exports/*
+!outputs/**/.gitkeep
+*.log
+.DS_Store
+.pytest_cache/
+.coverage
+htmlcov/

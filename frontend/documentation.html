@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieLens Analysis System - Technical Documentation v2.1</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dataset-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --accent-color: #0ea5e9;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+
+        /* Header & Navigation */
+        .doc-header {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .doc-header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .doc-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .doc-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .doc-meta {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .version-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.75rem;
+        }
+
+        /* Main Layout */
+        .doc-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Sidebar Navigation */
+        .doc-sidebar {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .sidebar-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-list {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 0.5rem 0.75rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--primary-color);
+        }
+
+        .nav-link.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .nav-sub-list {
+            margin-left: 1rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Main Content */
+        .doc-content {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 3rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Typography */
+        .doc-content h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .doc-content h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 3rem 0 1.5rem 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .doc-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2.5rem 0 1rem 0;
+        }
+
+        .doc-content h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2rem 0 0.75rem 0;
+        }
+
+        .doc-content h5 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.5rem 0;
+        }
+
+        .doc-content p {
+            margin-bottom: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        .doc-content ul,
+        .doc-content ol {
+            margin-bottom: 1.25rem;
+            padding-left: 1.5rem;
+        }
+
+        .doc-content li {
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-language);
+            position: absolute;
+            top: 0.5rem;
+            right: 1rem;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .inline-code {
+            background: var(--bg-tertiary);
+            color: var(--danger-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+        }
+
+        /* Information Boxes */
+        .info-box {
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.note {
+            background: #eff6ff;
+            border-color: var(--accent-color);
+        }
+
+        .info-box.warning {
+            background: #fffbeb;
+            border-color: var(--warning-color);
+        }
+
+        .info-box.success {
+            background: #f0fdf4;
+            border-color: var(--success-color);
+        }
+
+        .info-box.danger {
+            background: #fef2f2;
+            border-color: var(--danger-color);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Tables */
+        .doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .doc-table th {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .doc-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .doc-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Cards */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .card-description {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .badge.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .badge.success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .badge.warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .doc-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .doc-sidebar {
+                position: static;
+                order: 2;
+            }
+
+            .doc-content {
+                padding: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .doc-header-content {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .doc-content {
+                padding: 1.5rem;
+            }
+
+            .doc-content h1 {
+                font-size: 2rem;
+            }
+
+            .doc-content h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-title">
+                <i class="fas fa-film" style="color: var(--primary-color);"></i>
+                <h1>MovieLens Analysis System</h1>
+                <span class="version-badge">v2.1</span>
+            </div>
+            <div class="doc-meta">
+                <span><i class="fas fa-calendar"></i> Last Updated: December 2024</span>
+                <span><i class="fas fa-user"></i> Technical Documentation</span>
+                <a href="index.html" style="color: var(--primary-color); text-decoration: none;">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="doc-container">
+        <!-- Sidebar Navigation -->
+        <nav class="doc-sidebar">
+            <div class="sidebar-title">
+                <i class="fas fa-list"></i> Documentation Index
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="#overview" class="nav-link">System Overview</a></li>
+                    <li class="nav-item"><a href="#quick-start" class="nav-link">Quick Start Guide</a></li>
+                    <li class="nav-item"><a href="#installation" class="nav-link">Installation</a></li>
+                    <li class="nav-item"><a href="#requirements" class="nav-link">System Requirements</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Architecture</div>
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="#architecture" class="nav-link">System Architecture</a></li>
+                    <li class="nav-item"><a href="#data-flow" class="nav-link">Data Flow</a></li>
+                    <li class="nav-item"><a href="#components" class="nav-link">Core Components</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">API Reference</div>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="#dataloader" class="nav-link">DataLoader</a>
+                        <ul class="nav-sub-list">
+                            <li class="nav-item"><a href="#dataloader-methods" class="nav-link">Methods</a></li>
+                            <li class="nav-item"><a href="#dataloader-config" class="nav-link">Configuration</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#analyzer" class="nav-link">MovieAnalyzer</a>
+                        <ul class="nav-sub-list">
+                            <li class="nav-item"><a href="#analyzer-methods" class="nav-link">Methods</a></li>
+                            <li class="nav-item"><a href="#analyzer-algorithms" class="nav-link">Algorithms</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#visualizer" class="nav-link">Visualizer</a>
+                        <ul class="nav-sub-list">
+                            <li class="nav-item"><a href="#visualizer-charts" class="nav-link">Chart Types</a></li>
+                            <li class="nav-item"><a href="#visualizer-config" class="nav-link">Configuration</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#reports" class="nav-link">Report Generator</a>
+                        <ul class="nav-sub-list">
+                            <li class="nav-item"><a href="#report-formats" class="nav-link">Output Formats</a></li>
+                            <li class="nav-item"><a href="#report-templates" class="nav-link">Templates</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Advanced Topics</div>
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="#performance" class="nav-link">Performance Optimization</a></li>
+                    <li class="nav-item"><a href="#customization" class="nav-link">Customization</a></li>
+                    <li class="nav-item"><a href="#extensions" class="nav-link">Extensions</a></li>
+                    <li class="nav-item"><a href="#troubleshooting" class="nav-link">Troubleshooting</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Resources</div>
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="#examples" class="nav-link">Code Examples</a></li>
+                    <li class="nav-item"><a href="#benchmarks" class="nav-link">Benchmarks</a></li>
+                    <li class="nav-item"><a href="#changelog" class="nav-link">Changelog</a></li>
+                    <li class="nav-item"><a href="#support" class="nav-link">Support</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="doc-content">
+            <!-- System Overview -->
+            <section id="overview">
+                <h1>MovieLens Analysis System</h1>
+                <p class="lead" style="font-size: 1.125rem; color: var(--text-primary); margin-bottom: 2rem;">
+                    Enterprise-grade statistical analysis platform for MovieLens datasets, providing comprehensive 
+                    insights into movie ratings, user behavior patterns, and temporal trends through advanced 
+                    analytical algorithms and professional reporting capabilities.
+                </p>
+
+                <div class="info-box success">
+                    <div class="info-box-title">
+                        <i class="fas fa-check-circle"></i>
+                        Production Ready
+                    </div>
+                    <p>This system has been tested with datasets containing over 25 million ratings and is optimized for enterprise-scale deployments with Docker containerization and horizontal scaling capabilities.</p>
+                </div>
+
+                <h3>Key Features</h3>
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-chart-line"></i> Advanced Analytics
+                        </div>
+                        <div class="card-description">
+                            Statistical analysis using IMDb weighted rating, Wilson Score confidence intervals, and time-series trend detection algorithms.
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-database"></i> Multi-Source Data
+                        </div>
+                        <div class="card-description">
+                            Supports GroupLens and HuggingFace datasets with automatic caching, validation, and format optimization.
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-chart-bar"></i> Professional Visualization
+                        </div>
+                        <div class="card-description">
+                            Publication-quality charts and graphs using matplotlib/seaborn with customizable themes and export formats.
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-file-pdf"></i> Comprehensive Reports
+                        </div>
+                        <div class="card-description">
+                            Automated HTML and PDF report generation with executive summaries, detailed analysis, and actionable insights.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Start Guide -->
+            <section id="quick-start">
+                <h2>Quick Start Guide</h2>
+                
+                <div class="info-box note">
+                    <div class="info-box-title">
+                        <i class="fas fa-info-circle"></i>
+                        Prerequisites
+                    </div>
+                    <p>Ensure you have Python 3.8+ and Docker installed on your system before proceeding.</p>
+                </div>
+
+                <h3>1. Installation</h3>
+                <div class="code-block" data-language="bash">
+# Clone the repository
+git clone https://github.com/your-org/movielens-analysis.git
+cd movielens-analysis
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Or use Docker
+docker-compose up --build
+                </div>
+
+                <h3>2. Basic Usage</h3>
+                <div class="code-block" data-language="python">
+from src.data_loader import DataLoader
+from src.analyzer import MovieAnalyzer
+from src.visualizer import InsightsVisualizer
+from src.report_generator import ReportGenerator
+
+# Initialize components
+loader = DataLoader()
+analyzer = MovieAnalyzer()
+visualizer = InsightsVisualizer()
+reporter = ReportGenerator()
+
+# Load and analyze data
+movies_df, ratings_df = loader.load_data(source='grouplens', dataset='ml-latest-small')
+results = analyzer.analyze_comprehensive(movies_df, ratings_df)
+
+# Generate visualizations and reports
+visualizer.create_all_visualizations(results)
+reporter.generate_html_report(results, output_path='outputs/reports/analysis_report.html')
+                </div>
+
+                <h3>3. Access Results</h3>
+                <p>After running the analysis, you can access:</p>
+                <ul>
+                    <li><strong>Web Dashboard:</strong> <code class="inline-code">http://localhost:8000</code></li>
+                    <li><strong>Generated Reports:</strong> <code class="inline-code">outputs/reports/</code></li>
+                    <li><strong>Visualizations:</strong> <code class="inline-code">outputs/plots/</code></li>
+                    <li><strong>Exported Data:</strong> <code class="inline-code">outputs/exports/</code></li>
+                </ul>
+            </section>
+
+            <!-- System Requirements -->
+            <section id="requirements">
+                <h2>System Requirements</h2>
+
+                <h3>Minimum Requirements</h3>
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Minimum</th>
+                            <th>Recommended</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Python Version</td>
+                            <td>3.8+</td>
+                            <td>3.10+</td>
+                            <td>Required for modern pandas/numpy features</td>
+                        </tr>
+                        <tr>
+                            <td>RAM</td>
+                            <td>4 GB</td>
+                            <td>16 GB</td>
+                            <td>For large datasets (25M+ ratings)</td>
+                        </tr>
+                        <tr>
+                            <td>Storage</td>
+                            <td>2 GB</td>
+                            <td>10 GB</td>
+                            <td>Includes datasets, cache, and outputs</td>
+                        </tr>
+                        <tr>
+                            <td>CPU Cores</td>
+                            <td>2</td>
+                            <td>8+</td>
+                            <td>Parallel processing optimization</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Dependencies</h3>
+                <div class="code-block" data-language="text">
+pandas>=1.5.0
+numpy>=1.21.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+scikit-learn>=1.1.0
+datasets>=2.0.0
+requests>=2.28.0
+jinja2>=3.1.0
+weasyprint>=57.0
+                </div>
+            </section>
+
+            <!-- System Architecture -->
+            <section id="architecture">
+                <h2>System Architecture</h2>
+                
+                <div class="info-box note">
+                    <div class="info-box-title">
+                        <i class="fas fa-sitemap"></i>
+                        Modular Design
+                    </div>
+                    <p>The system follows a modular architecture pattern with clear separation of concerns, enabling easy maintenance, testing, and extensibility.</p>
+                </div>
+
+                <h3>Architecture Overview</h3>
+                <div style="text-align: center; margin: 2rem 0; padding: 2rem; background: var(--bg-secondary); border-radius: 8px; border: 2px dashed var(--border-color);">
+                    <h4>Data Flow Architecture</h4>
+                    <p style="margin: 1rem 0;"><em>Data Sources → Processing → Analysis → Visualization → Reports</em></p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem;">
+                        <div style="text-align: center;">
+                            <i class="fas fa-database" style="font-size: 2rem; color: var(--primary-color);"></i>
+                            <div>Data Sources</div>
+                        </div>
+                        <div style="color: var(--text-secondary);">→</div>
+                        <div style="text-align: center;">
+                            <i class="fas fa-cogs" style="font-size: 2rem; color: var(--accent-color);"></i>
+                            <div>Processing</div>
+                        </div>
+                        <div style="color: var(--text-secondary);">→</div>
+                        <div style="text-align: center;">
+                            <i class="fas fa-calculator" style="font-size: 2rem; color: var(--success-color);"></i>
+                            <div>Analysis</div>
+                        </div>
+                        <div style="color: var(--text-secondary);">→</div>
+                        <div style="text-align: center;">
+                            <i class="fas fa-chart-pie" style="font-size: 2rem; color: var(--warning-color);"></i>
+                            <div>Visualization</div>
+                        </div>
+                        <div style="color: var(--text-secondary);">→</div>
+                        <div style="text-align: center;">
+                            <i class="fas fa-file-alt" style="font-size: 2rem; color: var(--danger-color);"></i>
+                            <div>Reports</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Core Components -->
+            <section id="components">
+                <h2>Core Components</h2>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-download"></i> DataLoader
+                        </div>
+                        <div class="card-description">
+                            <p><strong>Purpose:</strong> Data acquisition and caching</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+                                <li>Multi-source support (GroupLens, HuggingFace)</li>
+                                <li>Intelligent caching with Parquet optimization</li>
+                                <li>Automatic data validation and cleaning</li>
+                            </ul>
+                            <span class="badge primary">Core Module</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-filter"></i> DataProcessor
+                        </div>
+                        <div class="card-description">
+                            <p><strong>Purpose:</strong> Data transformation and optimization</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+                                <li>Memory-efficient data type optimization</li>
+                                <li>Missing value handling and outlier detection</li>
+                                <li>Feature engineering and derived metrics</li>
+                            </ul>
+                            <span class="badge primary">Core Module</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-calculator"></i> MovieAnalyzer
+                        </div>
+                        <div class="card-description">
+                            <p><strong>Purpose:</strong> Statistical analysis and ranking</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+                                <li>IMDb weighted rating algorithm</li>
+                                <li>Wilson Score confidence intervals</li>
+                                <li>Time-series trend analysis</li>
+                            </ul>
+                            <span class="badge primary">Core Module</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-chart-line"></i> InsightsVisualizer
+                        </div>
+                        <div class="card-description">
+                            <p><strong>Purpose:</strong> Chart and plot generation</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+                                <li>Publication-quality visualizations</li>
+                                <li>Interactive and static chart options</li>
+                                <li>Customizable themes and styling</li>
+                            </ul>
+                            <span class="badge secondary">Visualization</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-file-pdf"></i> ReportGenerator
+                        </div>
+                        <div class="card-description">
+                            <p><strong>Purpose:</strong> Report compilation and export</p>
+                            <p><strong>Features:</strong></p>
+                            <ul style="margin: 0.5rem 0; padding-left: 1rem;">
+                                <li>HTML and PDF report generation</li>
+                                <li>Executive summary templates</li>
+                                <li>Automated insights and recommendations</li>
+                            </ul>
+                            <span class="badge secondary">Output</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Reference - DataLoader -->
+            <section id="dataloader">
+                <h2>DataLoader API Reference</h2>
+                
+                <div class="info-box note">
+                    <div class="info-box-title">
+                        <i class="fas fa-database"></i>
+                        Data Acquisition Engine
+                    </div>
+                    <p>The DataLoader module handles all data acquisition operations with intelligent caching, validation, and format optimization for maximum performance.</p>
+                </div>
+
+                <h3 id="dataloader-methods">Core Methods</h3>
+
+                <h4>Constructor</h4>
+                <div class="code-block" data-language="python">
+DataLoader(cache_dir='data/cache', validate_data=True, optimize_dtypes=True)
+                </div>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>cache_dir</code></td>
+                            <td>str</td>
+                            <td>'data/cache'</td>
+                            <td>Directory for storing cached datasets</td>
+                        </tr>
+                        <tr>
+                            <td><code>validate_data</code></td>
+                            <td>bool</td>
+                            <td>True</td>
+                            <td>Enable automatic data validation</td>
+                        </tr>
+                        <tr>
+                            <td><code>optimize_dtypes</code></td>
+                            <td>bool</td>
+                            <td>True</td>
+                            <td>Optimize data types for memory efficiency</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>load_data()</h4>
+                <div class="code-block" data-language="python">
+load_data(source='grouplens', dataset='ml-latest-small', force_refresh=False)
+                </div>
+
+                <p><strong>Returns:</strong> <code>Tuple[pd.DataFrame, pd.DataFrame]</code> - (movies_df, ratings_df)</p>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Options</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>source</code></td>
+                            <td>str</td>
+                            <td>'grouplens', 'huggingface'</td>
+                            <td>Data source provider</td>
+                        </tr>
+                        <tr>
+                            <td><code>dataset</code></td>
+                            <td>str</td>
+                            <td>'ml-latest-small', 'ml-25m', 'Movielens1M_m1'</td>
+                            <td>Specific dataset identifier</td>
+                        </tr>
+                        <tr>
+                            <td><code>force_refresh</code></td>
+                            <td>bool</td>
+                            <td>True, False</td>
+                            <td>Force re-download ignoring cache</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="dataloader-config">Configuration Options</h3>
+
+                <div class="code-block" data-language="python">
+# Advanced configuration example
+loader = DataLoader(
+    cache_dir='custom/cache/path',
+    validate_data=True,
+    optimize_dtypes=True
+)
+
+# Configure caching behavior
+loader.set_cache_policy(
+    max_age_days=30,
+    compression='gzip',
+    verify_integrity=True
+)
+
+# Load with custom parameters
+movies_df, ratings_df = loader.load_data(
+    source='grouplens',
+    dataset='ml-25m',
+    force_refresh=False
+)
+                </div>
+            </section>
+
+            <!-- API Reference - MovieAnalyzer -->
+            <section id="analyzer">
+                <h2>MovieAnalyzer API Reference</h2>
+
+                <div class="info-box success">
+                    <div class="info-box-title">
+                        <i class="fas fa-calculator"></i>
+                        Statistical Analysis Engine
+                    </div>
+                    <p>Advanced statistical analysis using industry-standard algorithms including IMDb weighted rating, Wilson Score confidence intervals, and temporal trend detection.</p>
+                </div>
+
+                <h3 id="analyzer-methods">Core Methods</h3>
+
+                <h4>analyze_comprehensive()</h4>
+                <div class="code-block" data-language="python">
+analyze_comprehensive(movies_df, ratings_df, min_ratings=50, confidence_level=0.95)
+                </div>
+
+                <p><strong>Returns:</strong> <code>Dict[str, Any]</code> - Comprehensive analysis results</p>
+
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>movies_df</code></td>
+                            <td>pd.DataFrame</td>
+                            <td>Required</td>
+                            <td>Movies metadata DataFrame</td>
+                        </tr>
+                        <tr>
+                            <td><code>ratings_df</code></td>
+                            <td>pd.DataFrame</td>
+                            <td>Required</td>
+                            <td>User ratings DataFrame</td>
+                        </tr>
+                        <tr>
+                            <td><code>min_ratings</code></td>
+                            <td>int</td>
+                            <td>50</td>
+                            <td>Minimum ratings for statistical significance</td>
+                        </tr>
+                        <tr>
+                            <td><code>confidence_level</code></td>
+                            <td>float</td>
+                            <td>0.95</td>
+                            <td>Confidence level for Wilson Score (0.0-1.0)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 id="analyzer-algorithms">Statistical Algorithms</h3>
+
+                <h4>IMDb Weighted Rating</h4>
+                <div class="info-box note">
+                    <div class="info-box-title">Formula</div>
+                    <div style="text-align: center; font-family: 'Times New Roman', serif; font-size: 1.1rem; margin: 1rem 0;">
+                        WR = (v / (v + m)) × R + (m / (v + m)) × C
+                    </div>
+                    <p><strong>Where:</strong></p>
+                    <ul>
+                        <li>WR = Weighted Rating</li>
+                        <li>v = Number of votes for the movie</li>
+                        <li>m = Minimum votes required (configurable)</li>
+                        <li>R = Average rating for the movie</li>
+                        <li>C = Mean vote across all movies</li>
+                    </ul>
+                </div>
+
+                <h4>Wilson Score Confidence Interval</h4>
+                <div class="code-block" data-language="python">
+def wilson_score(positive_ratings, total_ratings, confidence=0.95):
+    """
+    Calculate Wilson Score confidence interval for binary ratings.
+    
+    Args:
+        positive_ratings (int): Number of positive ratings (4+ stars)
+        total_ratings (int): Total number of ratings
+        confidence (float): Confidence level (default: 0.95)
+    
+    Returns:
+        float: Wilson Score lower bound
+    """
+    if total_ratings == 0:
+        return 0
+    
+    z = stats.norm.ppf(1 - (1 - confidence) / 2)
+    p = positive_ratings / total_ratings
+    
+    denominator = 1 + z**2 / total_ratings
+    centre_adjusted_probability = p + z**2 / (2 * total_ratings)
+    adjusted_standard_deviation = sqrt((p * (1 - p) + z**2 / (4 * total_ratings)) / total_ratings)
+    
+    lower_bound = (centre_adjusted_probability - z * adjusted_standard_deviation) / denominator
+    
+    return lower_bound
+                </div>
+            </section>
+
+            <!-- Performance Optimization -->
+            <section id="performance">
+                <h2>Performance Optimization</h2>
+
+                <div class="info-box warning">
+                    <div class="info-box-title">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Performance Considerations
+                    </div>
+                    <p>For datasets with 25M+ ratings, proper optimization is crucial for acceptable performance. Follow these guidelines for optimal results.</p>
+                </div>
+
+                <h3>Memory Optimization</h3>
+
+                <h4>Data Type Optimization</h4>
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Column Type</th>
+                            <th>Original</th>
+                            <th>Optimized</th>
+                            <th>Memory Savings</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>User ID</td>
+                            <td>int64</td>
+                            <td>int32</td>
+                            <td>50%</td>
+                        </tr>
+                        <tr>
+                            <td>Movie ID</td>
+                            <td>int64</td>
+                            <td>int32</td>
+                            <td>50%</td>
+                        </tr>
+                        <tr>
+                            <td>Rating</td>
+                            <td>float64</td>
+                            <td>float32</td>
+                            <td>50%</td>
+                        </tr>
+                        <tr>
+                            <td>Timestamp</td>
+                            <td>int64</td>
+                            <td>datetime64[s]</td>
+                            <td>12.5%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Sampling Strategies</h4>
+                <div class="code-block" data-language="python">
+# For development and testing
+analyzer = MovieAnalyzer(
+    sample_size=100000,  # Use 100K ratings for faster processing
+    sampling_method='stratified',  # Maintain genre distribution
+    random_state=42  # Reproducible results
+)
+
+# For production analysis
+analyzer = MovieAnalyzer(
+    sample_size=None,  # Use full dataset
+    enable_parallel=True,  # Enable multiprocessing
+    n_jobs=-1  # Use all available CPU cores
+)
+                </div>
+
+                <h3>Processing Benchmarks</h3>
+                <table class="doc-table">
+                    <thead>
+                        <tr>
+                            <th>Dataset Size</th>
+                            <th>Processing Time</th>
+                            <th>Memory Usage</th>
+                            <th>Recommended Hardware</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>100K ratings</td>
+                            <td>< 30 seconds</td>
+                            <td>< 1 GB</td>
+                            <td>4 GB RAM, 2 cores</td>
+                        </tr>
+                        <tr>
+                            <td>1M ratings</td>
+                            <td>2-5 minutes</td>
+                            <td>2-4 GB</td>
+                            <td>8 GB RAM, 4 cores</td>
+                        </tr>
+                        <tr>
+                            <td>25M ratings</td>
+                            <td>15-30 minutes</td>
+                            <td>8-16 GB</td>
+                            <td>32 GB RAM, 8+ cores</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Code Examples -->
+            <section id="examples">
+                <h2>Code Examples</h2>
+
+                <h3>Complete Analysis Pipeline</h3>
+                <div class="code-block" data-language="python">
+#!/usr/bin/env python3
+"""
+Complete MovieLens Analysis Pipeline
+Demonstrates end-to-end analysis workflow with error handling and logging.
+"""
+
+import logging
+from pathlib import Path
+from src.data_loader import DataLoader
+from src.analyzer import MovieAnalyzer
+from src.visualizer import InsightsVisualizer
+from src.report_generator import ReportGenerator
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def main():
+    """Execute complete analysis pipeline."""
+    try:
+        # Initialize components
+        logger.info("Initializing analysis components...")
+        loader = DataLoader(cache_dir='data/cache')
+        analyzer = MovieAnalyzer(min_ratings=50)
+        visualizer = InsightsVisualizer(style='publication')
+        reporter = ReportGenerator(template='executive')
+        
+        # Load data
+        logger.info("Loading MovieLens dataset...")
+        movies_df, ratings_df = loader.load_data(
+            source='grouplens',
+            dataset='ml-latest-small'
+        )
+        logger.info(f"Loaded {len(movies_df)} movies and {len(ratings_df)} ratings")
+        
+        # Perform analysis
+        logger.info("Performing comprehensive analysis...")
+        results = analyzer.analyze_comprehensive(movies_df, ratings_df)
+        
+        # Generate visualizations
+        logger.info("Creating visualizations...")
+        viz_paths = visualizer.create_all_visualizations(
+            results,
+            output_dir='outputs/plots'
+        )
+        
+        # Generate reports
+        logger.info("Generating reports...")
+        report_paths = reporter.generate_all_reports(
+            results,
+            viz_paths,
+            output_dir='outputs/reports'
+        )
+        
+        logger.info("Analysis completed successfully!")
+        logger.info(f"Reports available at: {report_paths}")
+        
+    except Exception as e:
+        logger.error(f"Analysis failed: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    main()
+                </div>
+
+                <h3>Custom Analysis Configuration</h3>
+                <div class="code-block" data-language="python">
+# Advanced configuration for specific use cases
+from src.analyzer import MovieAnalyzer
+from src.visualizer import InsightsVisualizer
+
+# Configure analyzer for genre-specific analysis
+analyzer = MovieAnalyzer(
+    min_ratings=100,
+    confidence_level=0.99,
+    enable_genre_analysis=True,
+    genre_filters=['Action', 'Drama', 'Comedy'],
+    temporal_analysis=True,
+    time_periods=['1990-2000', '2000-2010', '2010-2020']
+)
+
+# Configure visualizer for publication-quality output
+visualizer = InsightsVisualizer(
+    style='publication',
+    dpi=300,
+    figsize=(12, 8),
+    color_palette='viridis',
+    export_formats=['png', 'pdf', 'svg']
+)
+
+# Execute analysis with custom parameters
+results = analyzer.analyze_comprehensive(
+    movies_df, 
+    ratings_df,
+    include_user_analysis=True,
+    include_temporal_trends=True,
+    export_intermediate_results=True
+)
+                </div>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section id="troubleshooting">
+                <h2>Troubleshooting Guide</h2>
+
+                <div class="info-box danger">
+                    <div class="info-box-title">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Common Issues
+                    </div>
+                    <p>This section covers the most frequently encountered issues and their solutions.</p>
+                </div>
+
+                <h3>Memory Issues</h3>
+                <div class="info-box warning">
+                    <div class="info-box-title">Issue: Out of Memory Error</div>
+                    <p><strong>Symptoms:</strong> MemoryError or system becomes unresponsive when processing large datasets.</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Enable data type optimization: <code class="inline-code">optimize_dtypes=True</code></li>
+                        <li>Use sampling: <code class="inline-code">sample_size=1000000</code></li>
+                        <li>Process in chunks: <code class="inline-code">chunk_size=10000</code></li>
+                        <li>Increase system RAM or use cloud computing</li>
+                    </ul>
+                </div>
+
+                <h3>Data Loading Issues</h3>
+                <div class="info-box warning">
+                    <div class="info-box-title">Issue: Download Failures</div>
+                    <p><strong>Symptoms:</strong> Network timeouts or corrupted downloads.</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Check internet connection</li>
+                        <li>Clear cache: <code class="inline-code">loader.clear_cache()</code></li>
+                        <li>Use alternative data source</li>
+                        <li>Manual download and placement in cache directory</li>
+                    </ul>
+                </div>
+
+                <h3>Performance Issues</h3>
+                <div class="info-box warning">
+                    <div class="info-box-title">Issue: Slow Processing</div>
+                    <p><strong>Symptoms:</strong> Analysis takes significantly longer than expected.</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Enable parallel processing: <code class="inline-code">n_jobs=-1</code></li>
+                        <li>Use optimized algorithms: <code class="inline-code">algorithm='fast'</code></li>
+                        <li>Reduce dataset size for testing</li>
+                        <li>Profile code to identify bottlenecks</li>
+                    </ul>
+                </div>
+
+                <h3>Visualization Issues</h3>
+                <div class="info-box warning">
+                    <div class="info-box-title">Issue: Plot Generation Failures</div>
+                    <p><strong>Symptoms:</strong> Empty plots or rendering errors.</p>
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Check matplotlib backend: <code class="inline-code">matplotlib.use('Agg')</code></li>
+                        <li>Verify data integrity before plotting</li>
+                        <li>Reduce plot complexity or data points</li>
+                        <li>Update visualization dependencies</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Support -->
+            <section id="support">
+                <h2>Support & Resources</h2>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-book"></i> Documentation
+                        </div>
+                        <div class="card-description">
+                            <p>Comprehensive technical documentation with API references, examples, and best practices.</p>
+                            <p><strong>Location:</strong> <code class="inline-code">/docs/</code></p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-code"></i> Source Code
+                        </div>
+                        <div class="card-description">
+                            <p>Full source code with inline documentation and type hints for easy understanding and modification.</p>
+                            <p><strong>Location:</strong> <code class="inline-code">/src/</code></p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-flask"></i> Test Suite
+                        </div>
+                        <div class="card-description">
+                            <p>Comprehensive test suite with unit tests, integration tests, and performance benchmarks.</p>
+                            <p><strong>Location:</strong> <code class="inline-code">/tests/</code></p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fas fa-play"></i> Examples
+                        </div>
+                        <div class="card-description">
+                            <p>Ready-to-run examples demonstrating various use cases and advanced features.</p>
+                            <p><strong>Location:</strong> <code class="inline-code">/examples/</code></p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Getting Help</h3>
+                <div class="info-box note">
+                    <div class="info-box-title">
+                        <i class="fas fa-question-circle"></i>
+                        Need Assistance?
+                    </div>
+                    <p>For technical support, feature requests, or bug reports:</p>
+                    <ul>
+                        <li>Check the troubleshooting guide above</li>
+                        <li>Review the FAQ in the repository</li>
+                        <li>Search existing issues on GitHub</li>
+                        <li>Create a new issue with detailed information</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Changelog -->
+            <section id="changelog">
+                <h2>Changelog</h2>
+
+                <h3>Version 2.1 (Current)</h3>
+                <div class="info-box success">
+                    <div class="info-box-title">
+                        <i class="fas fa-plus-circle"></i>
+                        New Features
+                    </div>
+                    <ul>
+                        <li>Enterprise-grade documentation with improved navigation</li>
+                        <li>Enhanced performance optimization for large datasets</li>
+                        <li>Advanced statistical algorithms (Wilson Score, IMDb rating)</li>
+                        <li>Professional report templates with executive summaries</li>
+                        <li>Docker containerization for easy deployment</li>
+                    </ul>
+                </div>
+
+                <h3>Version 2.0</h3>
+                <div class="info-box note">
+                    <div class="info-box-title">
+                        <i class="fas fa-sync-alt"></i>
+                        Major Updates
+                    </div>
+                    <ul>
+                        <li>Complete system architecture redesign</li>
+                        <li>Modular component structure</li>
+                        <li>Multi-source data support (GroupLens, HuggingFace)</li>
+                        <li>Advanced visualization capabilities</li>
+                        <li>Comprehensive test suite</li>
+                    </ul>
+                </div>
+
+                <h3>Version 1.0</h3>
+                <div class="info-box secondary">
+                    <div class="info-box-title">
+                        <i class="fas fa-rocket"></i>
+                        Initial Release
+                    </div>
+                    <ul>
+                        <li>Basic MovieLens data analysis</li>
+                        <li>Simple visualization generation</li>
+                        <li>HTML report output</li>
+                        <li>Command-line interface</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Active navigation highlighting
+        function updateActiveNavigation() {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveNavigation);
+        window.addEventListener('load', updateActiveNavigation);
+
+        // Copy code blocks to clipboard
+        document.querySelectorAll('.code-block').forEach(block => {
+            block.addEventListener('click', function() {
+                navigator.clipboard.writeText(this.textContent).then(() => {
+                    // Visual feedback for copy action
+                    const originalBg = this.style.backgroundColor;
+                    this.style.backgroundColor = '#10b981';
+                    setTimeout(() => {
+                        this.style.backgroundColor = originalBg;
+                    }, 200);
+                });
+            });
+        });
+
+        // Search functionality (basic)
+        function initializeSearch() {
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = 'Search documentation...';
+            searchInput.style.cssText = `
+                width: 100%;
+                padding: 0.75rem;
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+                margin-bottom: 1rem;
+                font-size: 0.875rem;
+            `;
+            
+            const sidebar = document.querySelector('.doc-sidebar');
+            sidebar.insertBefore(searchInput, sidebar.firstChild.nextSibling);
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                const navItems = document.querySelectorAll('.nav-item');
+                
+                navItems.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(query) ? 'block' : 'none';
+                });
+            });
+        }
+
+        // Initialize search on load
+        window.addEventListener('load', initializeSearch);
+    </script>
+</body>
+</html>
